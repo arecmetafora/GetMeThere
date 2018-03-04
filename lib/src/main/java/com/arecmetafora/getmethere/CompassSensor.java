@@ -19,19 +19,20 @@ import com.google.android.gms.location.LocationServices;
 /**
  * Location compass sensor, using GPS and device sensors.
  */
-final class CompassSensor implements SensorEventListener {
+public final class CompassSensor implements SensorEventListener {
 
     /**
      * Callback to notify when the compass sensors found a new orientation angle.
      */
-    interface Callback {
+    public interface Callback {
 
         /**
          * Notifies when the angle between user`s orientation and the desired location has changed.
          *
-         * @param angle The new angle, in degrees
+         * @param myLocation The current user location.
+         * @param bearingToLocation The angle from user`s orientation and the tracked location
          */
-        void onSensorUpdate(float angle, float distance);
+        void onSensorUpdate(Location myLocation, float bearingToLocation);
     }
 
     /**
@@ -67,7 +68,7 @@ final class CompassSensor implements SensorEventListener {
     private final float[] mOrientationData = new float[3];
     private float[] mGravityData;
     private float[] mMagneticFieldData;
-    private float mLastCalculatedAngle = 0;
+    private float mLastCalculatedBearingToLocation = 0;
 
     private Callback mListener;
 
@@ -84,7 +85,7 @@ final class CompassSensor implements SensorEventListener {
      * @param context The application context.
      * @param listener The sensor listener.
      */
-    CompassSensor(Context context, @NonNull Callback listener) {
+    public CompassSensor(Context context, @NonNull Callback listener) {
         this(context, null, listener);
     }
 
@@ -95,7 +96,7 @@ final class CompassSensor implements SensorEventListener {
      * @param locationToTrack The location to be tracked by the sensors.
      * @param listener The sensor listener.
      */
-    CompassSensor(Context context, Location locationToTrack, @NonNull Callback listener) {
+    public CompassSensor(Context context, Location locationToTrack, @NonNull Callback listener) {
         this.mListener = listener;
         this.mLocationToTrack = locationToTrack;
 
@@ -118,7 +119,7 @@ final class CompassSensor implements SensorEventListener {
      * Starts the compass sensors.
      */
     @SuppressLint("MissingPermission")
-    void start() {
+    public void start() {
         if(mLocationToTrack != null) {
             mLocationProvider.requestLocationUpdates(locationRequest, mLocationCallback, null);
             mHasGravitySensor = mSensorManager.registerListener(this, mGravityFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
@@ -137,8 +138,7 @@ final class CompassSensor implements SensorEventListener {
     /**
      * Stops the compass sensors.
      */
-    @SuppressLint("MissingPermission")
-    void stop() {
+    public void stop() {
         mLocationProvider.removeLocationUpdates(mLocationCallback);
 
         if(mHasGravitySensor) {
@@ -151,7 +151,7 @@ final class CompassSensor implements SensorEventListener {
             mSensorManager.unregisterListener(this, mMagneticFieldSensor);
         }
 
-        mLastCalculatedAngle = 0;
+        mLastCalculatedBearingToLocation = 0;
         mCurrentLocation = null;
         mGravityData = null;
         mMagneticFieldData = null;
@@ -190,12 +190,12 @@ final class CompassSensor implements SensorEventListener {
 
             float azimuth = (float) Math.toDegrees(mOrientationData[0]) + geomagneticField.getDeclination();
             float bearing = mCurrentLocation.bearingTo(mLocationToTrack);
-            float angle = (azimuth - bearing + 360) % 360;
+            float bearingToLocation = (azimuth - bearing + 360) % 360;
 
-            if(Math.abs(mLastCalculatedAngle - angle) > MINIMUM_ANGLE_CHANGE) {
-                mLastCalculatedAngle = angle;
+            if(Math.abs(mLastCalculatedBearingToLocation - bearingToLocation) > MINIMUM_ANGLE_CHANGE) {
+                mLastCalculatedBearingToLocation = bearingToLocation;
                 if (mListener != null) {
-                    mListener.onSensorUpdate(mLastCalculatedAngle, mCurrentLocation.distanceTo(mLocationToTrack));
+                    mListener.onSensorUpdate(mCurrentLocation, mLastCalculatedBearingToLocation);
                 }
             }
 
@@ -211,7 +211,7 @@ final class CompassSensor implements SensorEventListener {
      *
      * @param locationToTrack The location which the angle with the device orientation will be calculated.
      */
-    void setLocationToTrack(Location locationToTrack) {
+    public void setLocationToTrack(Location locationToTrack) {
         this.mLocationToTrack = locationToTrack;
     }
 }

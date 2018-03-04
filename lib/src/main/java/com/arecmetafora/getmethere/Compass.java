@@ -6,6 +6,7 @@ import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -28,10 +29,10 @@ public class Compass extends View implements CompassSensor.Callback {
     private static final int DEFAULT_ARC_COLOR = Color.argb(255, 31, 43, 76);
     private static final int DEFAULT_ARC_WIDTH = 16;
     private static final int DEFAULT_TEXT_SIZE = 30;
-    private static final int DEFAULT_TEXT_COLOR = DEFAULT_ARC_COLOR;
+    private static final int DEFAULT_TEXT_COLOR = Color.argb(255,244, 67, 54);
     private static final int DEFAULT_PADDING = 40;
     private static final int DEFAULT_LOCATION_ICON = R.drawable.default_location_icon;
-    private static final int DEFAULT_LOCATION_ICON_SIZE = 80;
+    private static final int DEFAULT_LOCATION_ICON_SIZE = 60;
     private static final int DEFAULT_POINTER = R.drawable.default_pointer;
     private static final int DEFAULT_POINTER_MARGIN = 20;
     private static final int DEFAULT_ANGLE_ANIMATION_TIME = 400;
@@ -72,7 +73,7 @@ public class Compass extends View implements CompassSensor.Callback {
     private Location mLocation;
 
     /**
-     * Bearing from my actual location to the desired location, in radians.
+     * Bearing from my actual location to the desired location, in degrees.
      */
     private float mLocationBearing = Integer.MIN_VALUE;
 
@@ -93,6 +94,7 @@ public class Compass extends View implements CompassSensor.Callback {
     private Paint mImagePaint = new Paint(Paint.DITHER_FLAG);
     private Bitmap mPointerBitmap;
     private RectF mPointerRect;
+    private Matrix mPointerMatrix;
     private Bitmap mLocationBitmap;
     private RectF mLocationRect;
     private DecimalFormat mNumberFormatter = new DecimalFormat(".##");
@@ -164,6 +166,7 @@ public class Compass extends View implements CompassSensor.Callback {
         mArcRect = new RectF();
         mTextRect = new Rect();
         mPointerRect = new RectF();
+        mPointerMatrix = new Matrix();
         mLocationRect = new RectF();
 
         initArcPaint();
@@ -251,13 +254,22 @@ public class Compass extends View implements CompassSensor.Callback {
         canvas.drawArc(mArcRect, 0, 360, false, mArcPaint);
 
         // Draw the compass pointer (arrow)
-        canvas.drawBitmap(mPointerBitmap, null, mPointerRect, mImagePaint);
+        float widthScale = mPointerRect.width() / mPointerBitmap.getWidth();
+        float heightScale = mPointerRect.height() / mPointerBitmap.getHeight();
+        mPointerMatrix.reset();
+        mPointerMatrix.postScale(widthScale, heightScale);
+        mPointerMatrix.postTranslate(-mPointerRect.width() / 2, -mPointerRect.height() / 2);
+        mPointerMatrix.postRotate(-mLocationBearing);
+        mPointerMatrix.postTranslate(mPointerRect.centerX(), mPointerRect.centerY());
+        canvas.drawBitmap(mPointerBitmap, mPointerMatrix, mImagePaint);
 
         if(mLocation != null && mLocationBearing != Integer.MIN_VALUE) {
+
             // Draw the location marker along the compass arc boundaries
 
-            double locationX = mArcRect.centerX() - mArcRadius * Math.sin(mLocationBearing);
-            double locationY = mArcRect.centerY() - mArcRadius * Math.cos(mLocationBearing);
+            double bearingInRadians = Math.toRadians(mLocationBearing);
+            double locationX = mArcRect.centerX() - mArcRadius * Math.sin(bearingInRadians);
+            double locationY = mArcRect.centerY() - mArcRadius * Math.cos(bearingInRadians);
 
             float locationLeft = (float) locationX - mLocationBitmap.getWidth() / 2;
             float locationTop = (float) locationY - mLocationBitmap.getHeight() / 2;
@@ -271,7 +283,7 @@ public class Compass extends View implements CompassSensor.Callback {
             if(mDistanceToLocation < 1000) {
                 distanceStr = (int) mDistanceToLocation + " m";
             } else {
-                distanceStr = mNumberFormatter.format(mDistanceToLocation) + " km";
+                distanceStr = mNumberFormatter.format(mDistanceToLocation / 1000) + " km";
             }
             mTextPaint.getTextBounds(distanceStr, 0, distanceStr.length(), mTextRect);
             float xPos = canvas.getWidth() / 2 - mTextRect.width() / 2;
@@ -281,9 +293,18 @@ public class Compass extends View implements CompassSensor.Callback {
     }
 
     @Override
-    public void onSensorUpdate(float angle, float distance) {
-        float newBearing = (float)Math.toRadians(angle);
-        mDistanceToLocation = distance;
+    public void onSensorUpdate(Location myLocation, float bearingToLocation) {
+        float newBearing = bearingToLocation;
+        float oldBearing = mLocationBearing;
+        mDistanceToLocation = myLocation.distanceTo(mLocation);
+
+        // Fix animation from last to first quadrant and vice versa
+        if(oldBearing > 270 && newBearing < 90) {
+            newBearing += 360;
+        }
+        if(newBearing > 270 && oldBearing < 90) {
+            oldBearing += 360;
+        }
 
         // Cancels previous animation
         if(mCurrentAnimation != null) {
@@ -291,11 +312,11 @@ public class Compass extends View implements CompassSensor.Callback {
         }
 
         // Animate the sensor change, interpolating the difference
-        mCurrentAnimation = ValueAnimator.ofFloat(mLocationBearing, newBearing);
+        mCurrentAnimation = ValueAnimator.ofFloat(oldBearing, newBearing);
         mCurrentAnimation.setDuration(DEFAULT_ANGLE_ANIMATION_TIME);
         mCurrentAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             public void onAnimationUpdate(ValueAnimator animation) {
-                mLocationBearing = (float) animation.getAnimatedValue();
+                mLocationBearing = (float) animation.getAnimatedValue() % 360f;
                 invalidate();
             }
         });
