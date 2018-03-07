@@ -1,10 +1,11 @@
 package com.arecmetafora.getmethere;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.v4.content.AsyncTaskLoader;
-import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -12,7 +13,7 @@ import java.io.FileOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class MapLoader extends AsyncTaskLoader<File> {
+public class MapLoader extends AsyncTaskLoader<OfflineMap> {
 
     private static final String URL_TEMPLATE = "http://maps.google.com/maps/api/staticmap?center=%s,%s&zoom=%s&size=%sx%s&scale=%s";
     private static final String FILE_CACHE_TEMPLATE = "map_%s,%s";
@@ -24,9 +25,11 @@ public class MapLoader extends AsyncTaskLoader<File> {
 
     private String mUrl;
     private File mCacheFile;
+    private Location mCenterLocation;
 
-    public MapLoader(@NonNull Context context, Location centerLocation) {
+    MapLoader(@NonNull Context context, Location centerLocation) {
         super(context);
+        mCenterLocation = centerLocation;
 
         mUrl = String.format(URL_TEMPLATE,
                 centerLocation.getLatitude(), centerLocation.getLongitude(),
@@ -40,14 +43,14 @@ public class MapLoader extends AsyncTaskLoader<File> {
     @Override
     protected void onStartLoading() {
         if(mCacheFile.exists()) {
-            deliverResult(mCacheFile);
+            deliverResult(newMap());
         } else {
             forceLoad();
         }
     }
 
     @Override
-    public File loadInBackground() {
+    public OfflineMap loadInBackground() {
 
         HttpURLConnection connection = null;
         BufferedInputStream in = null;
@@ -59,13 +62,16 @@ public class MapLoader extends AsyncTaskLoader<File> {
             out = getContext().openFileOutput(mCacheFile.getName(), Context.MODE_PRIVATE);
 
             byte[] buf = new byte[BUFFER_SIZE];
-            int readBytes = 0;
+            int readBytes;
             while((readBytes = in.read(buf)) > 0) {
                 out.write(buf, 0, readBytes);
             }
 
+            return newMap();
+
         } catch (Exception e) {
             // Ignore. Let`s see what to do here
+            return null;
 
         } finally {
             try {
@@ -78,10 +84,13 @@ public class MapLoader extends AsyncTaskLoader<File> {
                 if (connection != null) {
                     connection.disconnect();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
+    }
 
-        return mCacheFile;
+    private OfflineMap newMap() {
+        Bitmap mapImage = BitmapFactory.decodeFile(mCacheFile.getAbsolutePath());
+        return new OfflineGoogleMaps(mapImage, mCenterLocation, DEFAULT_ZOOM_LEVEL, OfflineGoogleMaps.Scale.ENHANCED);
     }
 }

@@ -58,11 +58,6 @@ public class Compass extends View implements CompassSensor.Callback {
     private int mTextColor;
 
     /**
-     * Drawable representing the location which this widget is pointing at.
-     */
-    private Drawable mLocationIcon;
-
-    /**
      * Drawable representing the compass arrow (always point ahead)
      */
     private Drawable mPointer;
@@ -125,6 +120,8 @@ public class Compass extends View implements CompassSensor.Callback {
         mTextSize = DEFAULT_TEXT_SIZE * density;
         mTextColor = DEFAULT_TEXT_COLOR;
 
+        Drawable myLocationIcon = null;
+
         if (attrs != null) {
             TypedArray atts = context.obtainStyledAttributes(attrs,
                     R.styleable.Compass, 0, 0);
@@ -134,10 +131,8 @@ public class Compass extends View implements CompassSensor.Callback {
             mTextSize = (int) atts.getDimension(R.styleable.Compass_textSize, mTextSize);
             mTextColor = atts.getColor(R.styleable.Compass_textColor, mTextColor);
 
-            Drawable locationIcon = atts.getDrawable(R.styleable.Compass_locationIcon);
-            if (locationIcon != null) {
-                mLocationIcon = locationIcon;
-            }
+            myLocationIcon = atts.getDrawable(R.styleable.Compass_locationIcon);
+
             Drawable pointer = atts.getDrawable(R.styleable.Compass_pointer);
             if (pointer != null) {
                 mPointer = pointer;
@@ -146,22 +141,19 @@ public class Compass extends View implements CompassSensor.Callback {
             atts.recycle();
         }
 
-        if(mLocationIcon == null) {
-            mLocationIcon = getResources().getDrawable(DEFAULT_LOCATION_ICON);
+        if(myLocationIcon == null) {
+            myLocationIcon = getResources().getDrawable(DEFAULT_LOCATION_ICON);
         }
+        setLocationIcon(myLocationIcon);
+
         if(mPointer == null) {
             mPointer = getResources().getDrawable(DEFAULT_POINTER);
         }
+        setPointer(mPointer);
 
         mPointerMargin = (int) (DEFAULT_POINTER_MARGIN * density);
-
         int padding = (int) (DEFAULT_PADDING * density);
         setPadding(padding, padding, padding, padding);
-
-        int locationIconSize = (int) (DEFAULT_LOCATION_ICON_SIZE * density);
-        mPointerBitmap = ((BitmapDrawable) mPointer).getBitmap();
-        mLocationBitmap = Bitmap.createScaledBitmap(((BitmapDrawable) mLocationIcon).getBitmap(),
-                locationIconSize, locationIconSize, true);
 
         mArcRect = new RectF();
         mTextRect = new Rect();
@@ -293,7 +285,7 @@ public class Compass extends View implements CompassSensor.Callback {
     }
 
     @Override
-    public void onSensorUpdate(Location myLocation, float bearingToLocation) {
+    public void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth) {
         float newBearing = bearingToLocation;
         float oldBearing = mLocationBearing;
         mDistanceToLocation = myLocation.distanceTo(mLocation);
@@ -370,7 +362,11 @@ public class Compass extends View implements CompassSensor.Callback {
      * @param locationIcon Drawable representing the location which this widget is pointing at.
      */
     public void setLocationIcon(@NonNull Drawable locationIcon) {
-        mLocationIcon = locationIcon;
+        float density = getResources().getDisplayMetrics().density;
+        int locationIconSize = (int) (DEFAULT_LOCATION_ICON_SIZE * density);
+        mLocationBitmap = Bitmap.createScaledBitmap(((BitmapDrawable) locationIcon).getBitmap(),
+                locationIconSize, locationIconSize, true);
+        invalidate();
     }
 
     /**
@@ -379,10 +375,7 @@ public class Compass extends View implements CompassSensor.Callback {
      * @param locationIconRes Drawable resource representing the location which this widget is pointing at.
      */
     public void setLocationIcon(int locationIconRes) {
-        Drawable locationIcon = getResources().getDrawable(locationIconRes);
-        if (locationIcon != null) {
-            mLocationIcon = locationIcon;
-        }
+        setLocationIcon(getResources().getDrawable(locationIconRes));
     }
 
     /**
@@ -392,6 +385,8 @@ public class Compass extends View implements CompassSensor.Callback {
      */
     public void setPointer(@NonNull Drawable pointer) {
         mPointer = pointer;
+        mPointerBitmap = ((BitmapDrawable) mPointer).getBitmap();
+        invalidate();
     }
 
     /**
@@ -400,10 +395,7 @@ public class Compass extends View implements CompassSensor.Callback {
      * @param pointerRes Drawable resource representing the compass arrow (always point ahead, statically).
      */
     public void setPointer(int pointerRes) {
-        Drawable pointer = getResources().getDrawable(pointerRes);
-        if (pointer != null) {
-            mPointer = pointer;
-        }
+        setPointer(getResources().getDrawable(pointerRes));
     }
 
     /**

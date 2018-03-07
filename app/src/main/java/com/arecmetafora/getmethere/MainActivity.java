@@ -3,9 +3,7 @@ package com.arecmetafora.getmethere;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.location.Geocoder;
+import android.graphics.Color;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -13,11 +11,11 @@ import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.view.WindowManager;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 
-import java.io.File;
-
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<File> {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<OfflineMap> {
 
     private Map mMap;
     private Compass mCompass;
@@ -45,7 +43,6 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         }
 
         mCompass.setLocationToTrack(mLocationToTrack);
-        mMap.setLocationToTrack(mLocationToTrack);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -56,6 +53,35 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         }
 
         getSupportLoaderManager().initLoader(1, null, this);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if(item.getItemId() == R.id.main_menu_style) {
+            beautifyIt();
+            return true;
+        }
+        return false;
+    }
+
+    private void beautifyIt() {
+        float density = getResources().getDisplayMetrics().density;
+
+        mMap.setLocationIcon(R.drawable.location_icon);
+
+        mCompass.setArcWidth(10 * density);
+        mCompass.setArcColor(Color.argb(255, 76, 175, 80));
+        mCompass.setTextSize(40 * density);
+        mCompass.setTextColor(Color.argb(255, 96, 125, 139));
+        mCompass.setLocationIcon(R.drawable.location_icon);
+        mCompass.setPointer(R.drawable.compass_pointer);
     }
 
     @Override
@@ -79,17 +105,16 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     }
 
     @Override
-    public Loader<File> onCreateLoader(int id, Bundle args) {
+    public Loader<OfflineMap> onCreateLoader(int id, Bundle args) {
         return new MapLoader(this, mLocationToTrack);
     }
 
     @Override
-    public void onLoadFinished(Loader<File> loader, File data) {
-        Bitmap mapImage = BitmapFactory.decodeFile(data.getAbsolutePath());
-        mMap.setMapImage(mapImage);
+    public void onLoadFinished(Loader<OfflineMap> loader, OfflineMap data) {
+        mMap.setOfflineMap(data);
     }
 
     @Override
-    public void onLoaderReset(Loader<File> loader) {
+    public void onLoaderReset(Loader<OfflineMap> loader) {
     }
 }

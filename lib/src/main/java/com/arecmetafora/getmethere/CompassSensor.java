@@ -31,8 +31,9 @@ public final class CompassSensor implements SensorEventListener {
          *
          * @param myLocation The current user location.
          * @param bearingToLocation The angle from user`s orientation and the tracked location
+         * @param azimuth Azimuth to north pole
          */
-        void onSensorUpdate(Location myLocation, float bearingToLocation);
+        void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth);
     }
 
     /**
@@ -191,11 +192,12 @@ public final class CompassSensor implements SensorEventListener {
             float azimuth = (float) Math.toDegrees(mOrientationData[0]) + geomagneticField.getDeclination();
             float bearing = mCurrentLocation.bearingTo(mLocationToTrack);
             float bearingToLocation = (azimuth - bearing + 360) % 360;
+            float northAzimuth = (azimuth + 360) % 360;
 
             if(Math.abs(mLastCalculatedBearingToLocation - bearingToLocation) > MINIMUM_ANGLE_CHANGE) {
                 mLastCalculatedBearingToLocation = bearingToLocation;
                 if (mListener != null) {
-                    mListener.onSensorUpdate(mCurrentLocation, mLastCalculatedBearingToLocation);
+                    mListener.onSensorUpdate(mCurrentLocation, mLastCalculatedBearingToLocation, northAzimuth);
                 }
             }
 
@@ -204,6 +206,7 @@ public final class CompassSensor implements SensorEventListener {
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // TODO: Callback com accuracy dos sensores!
     }
 
     /**
