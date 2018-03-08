@@ -22,6 +22,16 @@ import com.google.android.gms.location.LocationServices;
 public final class CompassSensor implements SensorEventListener {
 
     /**
+     * Accuracy from compass sensors.
+     */
+    public enum Accuracy {
+        UNRELIABLE,
+        LOW,
+        MEDIUM,
+        HIGH
+    }
+
+    /**
      * Callback to notify when the compass sensors found a new orientation angle.
      */
     public interface Callback {
@@ -32,19 +42,15 @@ public final class CompassSensor implements SensorEventListener {
          * @param myLocation The current user location.
          * @param bearingToLocation The angle from user`s orientation and the tracked location
          * @param azimuth Azimuth to north pole
+         * @param accuracy Sensor accuracies
          */
-        void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth);
+        void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth, Accuracy accuracy);
     }
 
     /**
      * Minimum angle change to notify listeners.
      */
     private static final int MINIMUM_ANGLE_CHANGE = 5;
-
-    /**
-     * Minimum user displacement in meters, so a new location is captured.
-     */
-    private static final int MINIMUM_DISPLACEMENT = 10;
 
     /**
      * Interval between location captures.
@@ -56,6 +62,7 @@ public final class CompassSensor implements SensorEventListener {
     private LocationRequest locationRequest;
     private Location mCurrentLocation;
     private Location mLocationToTrack;
+    private int mMagneticFieldSensorAccuracy;
 
     // Orientation sensors
     private SensorManager mSensorManager;
@@ -70,13 +77,14 @@ public final class CompassSensor implements SensorEventListener {
     private float[] mGravityData;
     private float[] mMagneticFieldData;
     private float mLastCalculatedBearingToLocation = 0;
+    private float mNorthAzimuth = 0;
 
     private Callback mListener;
 
     private LocationCallback mLocationCallback = new LocationCallback() {
         public void onLocationResult(LocationResult result) {
             mCurrentLocation = result.getLastLocation();
-            onSensorValueChanged();
+            notifySensorUpdate();
         }
     };
 
@@ -106,7 +114,6 @@ public final class CompassSensor implements SensorEventListener {
         locationRequest = LocationRequest.create()
                 .setInterval(LOCATION_CAPTURE_INTERVAL)
                 .setFastestInterval(LOCATION_CAPTURE_INTERVAL)
-                .setSmallestDisplacement(MINIMUM_DISPLACEMENT)
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         mSensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
@@ -192,21 +199,40 @@ public final class CompassSensor implements SensorEventListener {
             float azimuth = (float) Math.toDegrees(mOrientationData[0]) + geomagneticField.getDeclination();
             float bearing = mCurrentLocation.bearingTo(mLocationToTrack);
             float bearingToLocation = (azimuth - bearing + 360) % 360;
-            float northAzimuth = (azimuth + 360) % 360;
+            mNorthAzimuth = (azimuth + 360) % 360;
 
             if(Math.abs(mLastCalculatedBearingToLocation - bearingToLocation) > MINIMUM_ANGLE_CHANGE) {
                 mLastCalculatedBearingToLocation = bearingToLocation;
-                if (mListener != null) {
-                    mListener.onSensorUpdate(mCurrentLocation, mLastCalculatedBearingToLocation, northAzimuth);
-                }
+                notifySensorUpdate();
+            }
+        }
+    }
+
+    /**
+     * Notify when a sensor has changed.
+     */
+    private void notifySensorUpdate() {
+        if (mListener != null) {
+            Accuracy acc;
+            if(mMagneticFieldSensorAccuracy >= 4) {
+                acc = Accuracy.HIGH;
+            } else if(mMagneticFieldSensorAccuracy == 3) {
+                acc = Accuracy.MEDIUM;
+            } else if(mMagneticFieldSensorAccuracy == 2) {
+                acc = Accuracy.LOW;
+            } else {
+                acc = Accuracy.UNRELIABLE;
             }
 
+            mListener.onSensorUpdate(mCurrentLocation, mLastCalculatedBearingToLocation, mNorthAzimuth, acc);
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // TODO: Callback com accuracy dos sensores!
+        if(sensor == mMagneticFieldSensor) {
+            mMagneticFieldSensorAccuracy = accuracy;
+        }
     }
 
     /**

@@ -242,20 +242,20 @@ public class Compass extends View implements CompassSensor.Callback {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        // Draw the compass arc
-        canvas.drawArc(mArcRect, 0, 360, false, mArcPaint);
-
-        // Draw the compass pointer (arrow)
-        float widthScale = mPointerRect.width() / mPointerBitmap.getWidth();
-        float heightScale = mPointerRect.height() / mPointerBitmap.getHeight();
-        mPointerMatrix.reset();
-        mPointerMatrix.postScale(widthScale, heightScale);
-        mPointerMatrix.postTranslate(-mPointerRect.width() / 2, -mPointerRect.height() / 2);
-        mPointerMatrix.postRotate(-mLocationBearing);
-        mPointerMatrix.postTranslate(mPointerRect.centerX(), mPointerRect.centerY());
-        canvas.drawBitmap(mPointerBitmap, mPointerMatrix, mImagePaint);
-
         if(mLocation != null && mLocationBearing != Integer.MIN_VALUE) {
+
+            // Draw the compass arc
+            canvas.drawArc(mArcRect, 0, 360, false, mArcPaint);
+
+            // Draw the compass pointer (arrow)
+            float widthScale = mPointerRect.width() / mPointerBitmap.getWidth();
+            float heightScale = mPointerRect.height() / mPointerBitmap.getHeight();
+            mPointerMatrix.reset();
+            mPointerMatrix.postScale(widthScale, heightScale);
+            mPointerMatrix.postTranslate(-mPointerRect.width() / 2, -mPointerRect.height() / 2);
+            mPointerMatrix.postRotate(-mLocationBearing);
+            mPointerMatrix.postTranslate(mPointerRect.centerX(), mPointerRect.centerY());
+            canvas.drawBitmap(mPointerBitmap, mPointerMatrix, mImagePaint);
 
             // Draw the location marker along the compass arc boundaries
 
@@ -285,10 +285,16 @@ public class Compass extends View implements CompassSensor.Callback {
     }
 
     @Override
-    public void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth) {
+    public void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth, CompassSensor.Accuracy accuracy) {
+        mDistanceToLocation = myLocation.distanceTo(mLocation);
+
+        // Discard bad accuracies
+        if(accuracy == CompassSensor.Accuracy.UNRELIABLE || accuracy == CompassSensor.Accuracy.LOW) {
+            return;
+        }
+
         float newBearing = bearingToLocation;
         float oldBearing = mLocationBearing;
-        mDistanceToLocation = myLocation.distanceTo(mLocation);
 
         // Fix animation from last to first quadrant and vice versa
         if(oldBearing > 270 && newBearing < 90) {

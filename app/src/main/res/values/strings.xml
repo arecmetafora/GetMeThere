@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Get Me There</string>
     <string name="style">Style</string>
+    <string name="coordinates_chooser_title">Choose a location</string>
 </resources>

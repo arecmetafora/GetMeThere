@@ -9,6 +9,8 @@ import android.location.Location;
  */
 public abstract class OfflineMap {
 
+    private static final double EARTH_RADIUS = 6378100.0;
+
     /**
      * Bitmap which represents this offline map.
      */
@@ -61,6 +63,27 @@ public abstract class OfflineMap {
         return new PointF(
                 mMapBitmap.getWidth()/2  + (cartesianCoordinate.x - mCenterXYCoordinate.x) * mScale,
                 mMapBitmap.getHeight()/2 + (cartesianCoordinate.y - mCenterXYCoordinate.y) * mScale);
+    }
+
+    /**
+     * Projects a radius (in meters) from center coordinate to pixel distance.
+     *
+     * @param radius The radius in meters
+     *
+     * @return The radius in pixel distance.
+     */
+    public float projectDistanceFromCenter(float radius) {
+        Location l1 = new Location("");
+        Location l2 = new Location("");
+        l1.setLatitude(radius / EARTH_RADIUS);
+        l1.setLongitude(radius / (EARTH_RADIUS * Math.cos(Math.toRadians(mCenterGeoCoordinate.getLatitude()))));
+
+        l2.setLatitude(mCenterGeoCoordinate.getLatitude() + Math.toDegrees(l1.getLatitude()));
+        l2.setLongitude(mCenterGeoCoordinate.getLongitude() + Math.toDegrees(l1.getLongitude()));
+
+        PointF p = projectToPixel(l2);
+
+        return Math.abs(mMapBitmap.getWidth()/2 - p.x) * mScale;
     }
 
     /**

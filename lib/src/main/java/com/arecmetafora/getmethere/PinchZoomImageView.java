@@ -17,6 +17,7 @@ public class PinchZoomImageView extends ImageView {
     // Matrices used to move and zoom image
     private Matrix matrix = new Matrix();
     private Matrix savedMatrix = new Matrix();
+    private float[] matrixValues = new float[9];
 
     // Touch event modes
     private static final int NONE = 0;
@@ -101,5 +102,13 @@ public class PinchZoomImageView extends ImageView {
         float x = event.getX(0) + event.getX(1);
         float y = event.getY(0) + event.getY(1);
         point.set(x / 2, y / 2);
+    }
+
+    /**
+     * @return The zoom scale.
+     */
+    public float getZoomScale() {
+        matrix.getValues(matrixValues);
+        return matrixValues[0];
     }
 }

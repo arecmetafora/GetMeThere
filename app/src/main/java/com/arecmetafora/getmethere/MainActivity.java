@@ -1,6 +1,7 @@
 package com.arecmetafora.getmethere;
 
 import android.Manifest;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -9,13 +10,16 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.EditText;
 
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<OfflineMap> {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<OfflineMap>, CoordinatesChooser.Callback {
 
     private Map mMap;
     private Compass mCompass;
@@ -29,20 +33,15 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         mCompass = findViewById(R.id.compass);
         mMap = findViewById(R.id.map);
 
-        mLocationToTrack = new Location("");
-        mLocationToTrack.setLatitude(-23.605689);
-        mLocationToTrack.setLongitude(-46.664609);
-
         if(getIntent() != null && Intent.ACTION_VIEW.equals(getIntent().getAction()) &&
             getIntent().getData() != null && "geo".equals(getIntent().getData().getScheme())) {
             GeoURI geoUri = GeoURI.parse(getIntent().getData());
             if(geoUri != null) {
+                mLocationToTrack = new Location("");
                 mLocationToTrack.setLatitude(geoUri.getLatitude());
                 mLocationToTrack.setLongitude(geoUri.getLongitude());
             }
         }
-
-        mCompass.setLocationToTrack(mLocationToTrack);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -52,7 +51,15 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                     0);
         }
 
-        getSupportLoaderManager().initLoader(1, null, this);
+        if(mLocationToTrack == null) {
+            mLocationToTrack = new Location("");
+            mLocationToTrack.setLatitude(-23.605689);
+            mLocationToTrack.setLongitude(-46.664609);
+            onChoose(mLocationToTrack);
+            //new CoordinatesChooser().show(getSupportFragmentManager(), "tag");
+        } else {
+            onChoose(mLocationToTrack);
+        }
     }
 
     @Override
@@ -116,5 +123,17 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
     @Override
     public void onLoaderReset(Loader<OfflineMap> loader) {
+    }
+
+    @Override
+    public void onCancel() {
+        this.finish();
+    }
+
+    @Override
+    public void onChoose(Location location) {
+        mLocationToTrack = location;
+        mCompass.setLocationToTrack(mLocationToTrack);
+        getSupportLoaderManager().initLoader(1, null, this);
     }
 }

@@ -16,7 +16,6 @@ import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.view.animation.DecelerateInterpolator;
 
 /**
  * Offline map of a location`s neighborhood.
@@ -34,7 +33,7 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
         @Override
         public void draw(Canvas canvas) {
             super.draw(canvas);
-            drawMapOverlay(canvas, this.getBitmap().getWidth(), this.getBitmap().getHeight());
+            drawMapOverlay(canvas, this.getBitmap().getWidth(), this.getBitmap().getHeight(), getZoomScale());
         }
     }
 
@@ -43,6 +42,11 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
     private static final int DEFAULT_LOCATION_ICON_SIZE = 40;
     private static final int DEFAULT_MY_LOCATION_ICON_SIZE = 40;
     private static final int DEFAULT_ANGLE_ANIMATION_TIME = 200;
+
+    /**
+     * Timeout to consider a good location (3 packages lost is bad)
+     */
+    private static final int LOCATION_TIMEOUT = 30000;
 
     /**
      * Representation of a offline map.
@@ -59,18 +63,27 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
      */
     private float mAzimuth;
 
+    /**
+     * Current location accuracy.
+     */
+    private float mCurrentAccuracy = 0;
+
     private CompassSensor mCompassSensor;
 
     private boolean mSensorStarted = false;
     private Bitmap mLocationBitmap;
-    private RectF mLocationRect;
     private Bitmap mMyLocationOnlineBitmap;
     private Bitmap mMyLocationOfflineBitmap;
     private Bitmap mMyLocationBearingBitmap;
+    private RectF mLocationRect;
     private RectF mMyLocationRect;
     private RectF mMyLocationBearingRect;
+    private Paint mAccuracyRadiusContour;
+    private Paint mAccuracyRadiusFill;
     private Matrix mLocationMatrix;
-    private ValueAnimator mCurrentAnimation;
+    private ValueAnimator mCurrentSensorAnimation;
+    private ValueAnimator mCurrentAccuracyAnimation;
+    private float mMyLocationIconSize;
 
     public Map(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -91,7 +104,7 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
         }
         setLocationIcon(myLocationIcon);
 
-        float iconSize = DEFAULT_MY_LOCATION_ICON_SIZE * getResources().getDisplayMetrics().density;
+        mMyLocationIconSize = DEFAULT_MY_LOCATION_ICON_SIZE * getResources().getDisplayMetrics().density;
 
         mMyLocationOnlineBitmap = ((BitmapDrawable)getResources()
                 .getDrawable(R.drawable.position_online)).getBitmap();
@@ -100,9 +113,18 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
         mMyLocationBearingBitmap = ((BitmapDrawable)getResources()
                 .getDrawable(R.drawable.position_bearing)).getBitmap();
 
-        mMyLocationRect = new RectF(0, 0, iconSize, iconSize);
-        mMyLocationBearingRect = new RectF(0, 0, iconSize*2, iconSize*2);
+        mLocationRect = new RectF();
+        mMyLocationRect = new RectF();
+        mMyLocationBearingRect = new RectF();
         mLocationMatrix = new Matrix();
+
+        mAccuracyRadiusContour = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mAccuracyRadiusContour.setColor(0x110000FF);
+        mAccuracyRadiusContour.setStyle(Paint.Style.FILL);
+
+        mAccuracyRadiusFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mAccuracyRadiusFill.setColor(0xFF0000FF);
+        mAccuracyRadiusFill.setStyle(Paint.Style.STROKE);
 
         mCompassSensor = new CompassSensor(getContext(), this);
     }
@@ -128,8 +150,14 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
     }
 
     @Override
-    public void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth) {
+    public void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth, CompassSensor.Accuracy accuracy) {
         mMyLocation = myLocation;
+
+        // Discard bad accuracies
+        if(accuracy == CompassSensor.Accuracy.UNRELIABLE || accuracy == CompassSensor.Accuracy.LOW) {
+            return;
+        }
+
         mAzimuth = azimuth;
 
         float newAzimuth = azimuth;
@@ -144,31 +172,48 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
         }
 
         // Cancels previous animation
-        if(mCurrentAnimation != null) {
-            mCurrentAnimation.cancel();
+        if(mCurrentSensorAnimation != null) {
+            mCurrentSensorAnimation.cancel();
         }
-
         // Animate the sensor change, interpolating the difference
-        mCurrentAnimation = ValueAnimator.ofFloat(oldAzimuth, newAzimuth);
-        mCurrentAnimation.setDuration(DEFAULT_ANGLE_ANIMATION_TIME);
-        mCurrentAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        mCurrentSensorAnimation = ValueAnimator.ofFloat(oldAzimuth, newAzimuth);
+        mCurrentSensorAnimation.setDuration(DEFAULT_ANGLE_ANIMATION_TIME);
+        mCurrentSensorAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             public void onAnimationUpdate(ValueAnimator animation) {
                 mAzimuth = (float) animation.getAnimatedValue() % 360f;
                 invalidate();
             }
         });
+        mCurrentSensorAnimation.start();
 
-        mCurrentAnimation.start();
+        float oldAccuracy = mCurrentAccuracy;
+        float newAccuracy = mMyLocation.getAccuracy();
+
+        // Cancels previous animation
+        if(mCurrentAccuracyAnimation != null) {
+            mCurrentAccuracyAnimation.cancel();
+        }
+        // Animate accuracy change
+        mCurrentAccuracyAnimation = ValueAnimator.ofFloat(oldAccuracy, newAccuracy);
+        mCurrentAccuracyAnimation.setDuration(DEFAULT_ANGLE_ANIMATION_TIME);
+        mCurrentAccuracyAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mCurrentAccuracy = (float) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+        mCurrentAccuracyAnimation.start();
     }
 
     /**
      * Draws the map elements.
      *
-     * @param canvas The canvas to draw on.
+     * @param canvas The canvas to draw on
      * @param width The map width, in pixels
      * @param height The map height, in pixels
+     * @param zoomScale The current map zoom scale
      */
-    private void drawMapOverlay(Canvas canvas, int width, int height) {
+    private void drawMapOverlay(Canvas canvas, int width, int height, float zoomScale) {
 
         Paint mPaint = new Paint();
         mPaint.setColor(Color.argb(255, 31, 43, 76));
@@ -176,31 +221,51 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setStrokeWidth(4);
 
+        // Location to track is always the center of this map
+        mLocationRect.set(0, 0, mLocationBitmap.getWidth() / zoomScale, mLocationBitmap.getHeight() / zoomScale);
+        mLocationRect.offsetTo(
+                width/2f - mLocationRect.width()/2,
+                height/2f - mLocationRect.height());
+        canvas.drawBitmap(mLocationBitmap, null, mLocationRect, mPaint);
+
         if(mMyLocation != null) {
 
             PointF myLocationXY = mOfflineMap.projectToPixel(mMyLocation);
 
+            // Accuracy radius for my location
+            float radius = mOfflineMap.projectDistanceFromCenter(mCurrentAccuracy);
+            if (radius > mMyLocationRect.width()/4) {
+                canvas.drawCircle(myLocationXY.x, myLocationXY.y, radius, mAccuracyRadiusFill);
+                canvas.drawCircle(myLocationXY.x, myLocationXY.y, radius, mAccuracyRadiusContour);
+            }
+
+            Bitmap myLocationBitmap;
+            //if(System.currentTimeMillis() - mMyLocation.getTime() > LOCATION_TIMEOUT) {
+            if(mCurrentAccuracy > 100) {
+                myLocationBitmap = mMyLocationOfflineBitmap;
+            } else {
+                myLocationBitmap = mMyLocationOnlineBitmap;
+
+                // Draw the user`s view horizon
+                float size = mMyLocationIconSize*2 / zoomScale;
+                mMyLocationBearingRect.set(0, 0, size, size);
+                float widthScale = mMyLocationBearingRect.width() / mMyLocationBearingBitmap.getWidth();
+                float heightScale = mMyLocationBearingRect.height() / mMyLocationBearingBitmap.getHeight();
+                mLocationMatrix.reset();
+                mLocationMatrix.postScale(widthScale, heightScale);
+                mLocationMatrix.postTranslate(-mMyLocationBearingRect.width() / 2, -mMyLocationBearingRect.height() / 2);
+                mLocationMatrix.postRotate(mAzimuth);
+                mLocationMatrix.postTranslate(myLocationXY.x, myLocationXY.y);
+                canvas.drawBitmap(mMyLocationBearingBitmap, mLocationMatrix, mPaint);
+            }
+
             // Pointer (blue dot) of my current location
+            float size = mMyLocationIconSize / zoomScale;
+            mMyLocationRect.set(0, 0, size, size);
             mMyLocationRect.offsetTo(
                     myLocationXY.x - mMyLocationRect.width()/2f,
                     myLocationXY.y - mMyLocationRect.width()/2f);
-            canvas.drawBitmap(mMyLocationOnlineBitmap, null, mMyLocationRect, mPaint);
-
-            // Draw the user`s view horizon
-            float widthScale = mMyLocationBearingRect.width() / mMyLocationBearingBitmap.getWidth();
-            float heightScale = mMyLocationBearingRect.height() / mMyLocationBearingBitmap.getHeight();
-            mLocationMatrix.reset();
-            mLocationMatrix.postScale(widthScale, heightScale);
-            mLocationMatrix.postTranslate(-mMyLocationBearingRect.width()/2, -mMyLocationBearingRect.height()/2);
-            mLocationMatrix.postRotate(mAzimuth);
-            mLocationMatrix.postTranslate(myLocationXY.x, myLocationXY.y);
-            canvas.drawBitmap(mMyLocationBearingBitmap, mLocationMatrix, mPaint);
-
-            // Location to track is always the center of this map
-            mLocationRect.offsetTo(
-                    width/2f - mLocationRect.width()/2,
-                    height/2f - mLocationRect.height());
-            canvas.drawBitmap(mLocationBitmap, null, mLocationRect, mPaint);
+            canvas.drawBitmap(myLocationBitmap, null, mMyLocationRect, mPaint);
         }
     }
 
@@ -229,7 +294,6 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
         int locationIconSize = (int) (DEFAULT_LOCATION_ICON_SIZE * density);
         mLocationBitmap = Bitmap.createScaledBitmap(((BitmapDrawable) locationIcon).getBitmap(),
                 locationIconSize, locationIconSize, true);
-        mLocationRect = new RectF(0, 0, mLocationBitmap.getWidth(), mLocationBitmap.getHeight());
         invalidate();
     }
 

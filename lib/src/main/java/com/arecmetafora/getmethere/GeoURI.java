@@ -61,24 +61,26 @@ public class GeoURI {
             }
 
             String query = matcher.group(4);
-            matcher = GEO_URI_QUERY_PATTERN.matcher(query);
-            if(matcher.matches()) {
-                if(matcher.group(1) != null) {
-                    latitude = Double.parseDouble(matcher.group(1));
-                    if (latitude > 90.0 || latitude < -90.0) {
-                        return null;
+            if(query != null) {
+                matcher = GEO_URI_QUERY_PATTERN.matcher(query);
+                if (matcher.matches()) {
+                    if (matcher.group(1) != null) {
+                        latitude = Double.parseDouble(matcher.group(1));
+                        if (latitude > 90.0 || latitude < -90.0) {
+                            return null;
+                        }
                     }
-                }
-                if(matcher.group(2) != null) {
-                    longitude = Double.parseDouble(matcher.group(2));
-                    if (longitude > 180.0 || longitude < -180.0) {
-                        return null;
+                    if (matcher.group(2) != null) {
+                        longitude = Double.parseDouble(matcher.group(2));
+                        if (longitude > 180.0 || longitude < -180.0) {
+                            return null;
+                        }
                     }
-                }
-                if (matcher.group(3) != null) {
-                    altitude = Double.parseDouble(matcher.group(3));
-                    if (altitude < 0.0) {
-                        return null;
+                    if (matcher.group(3) != null) {
+                        altitude = Double.parseDouble(matcher.group(3));
+                        if (altitude < 0.0) {
+                            return null;
+                        }
                     }
                 }
             }
