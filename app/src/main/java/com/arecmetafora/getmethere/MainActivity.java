@@ -1,7 +1,6 @@
 package com.arecmetafora.getmethere;
 
 import android.Manifest;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -10,14 +9,11 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.EditText;
 
 public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<OfflineMap>, CoordinatesChooser.Callback {
 
@@ -81,13 +77,13 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     private void beautifyIt() {
         float density = getResources().getDisplayMetrics().density;
 
-        mMap.setLocationIcon(R.drawable.location_icon);
+        mMap.setLocationIcon(R.drawable.location_booking);
 
-        mCompass.setArcWidth(10 * density);
-        mCompass.setArcColor(Color.argb(255, 76, 175, 80));
-        mCompass.setTextSize(40 * density);
-        mCompass.setTextColor(Color.argb(255, 96, 125, 139));
-        mCompass.setLocationIcon(R.drawable.location_icon);
+        mCompass.setArcWidth(20 * density);
+        mCompass.setArcColor(Color.argb(255, 0, 53, 128));
+        mCompass.setTextSize(30 * density);
+        mCompass.setTextColor(Color.argb(255, 0, 158, 230));
+        mCompass.setLocationIcon(R.drawable.location_hotel);
         mCompass.setPointer(R.drawable.compass_pointer);
     }
 

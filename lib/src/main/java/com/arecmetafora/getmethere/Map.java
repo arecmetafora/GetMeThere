@@ -16,11 +16,16 @@ import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.view.ViewTreeObserver;
+
+import com.otaliastudios.zoom.ZoomEngine;
+import com.otaliastudios.zoom.ZoomImageView;
 
 /**
  * Offline map of a location`s neighborhood.
  */
-public class Map extends PinchZoomImageView implements CompassSensor.Callback {
+public class Map extends ZoomImageView implements CompassSensor.Callback {
 
     /**
      * Drawable for this view
@@ -33,14 +38,14 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
         @Override
         public void draw(Canvas canvas) {
             super.draw(canvas);
-            drawMapOverlay(canvas, this.getBitmap().getWidth(), this.getBitmap().getHeight(), getZoomScale());
+            drawMapOverlay(canvas, this.getBitmap().getWidth(), this.getBitmap().getHeight(), getEngine().getRealZoom());
         }
     }
 
     // Defaults
     private static final int DEFAULT_LOCATION_ICON = R.drawable.default_location_icon;
-    private static final int DEFAULT_LOCATION_ICON_SIZE = 40;
-    private static final int DEFAULT_MY_LOCATION_ICON_SIZE = 40;
+    private static final int DEFAULT_LOCATION_ICON_SIZE = 60;
+    private static final int DEFAULT_MY_LOCATION_ICON_SIZE = 50;
     private static final int DEFAULT_ANGLE_ANIMATION_TIME = 200;
 
     /**
@@ -126,6 +131,21 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
         mAccuracyRadiusFill.setColor(0xFF0000FF);
         mAccuracyRadiusFill.setStyle(Paint.Style.STROKE);
 
+        getEngine().setMaxZoom(5f, ZoomEngine.TYPE_REAL_ZOOM);
+        getEngine().setMinZoom(1f, ZoomEngine.TYPE_REAL_ZOOM);
+        getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                if(mOfflineMap != null && mOfflineMap.getMapBitmap() != null) {
+                    float minZoom = Math.min(
+                            (float) getMeasuredWidth() / mOfflineMap.getMapBitmap().getWidth(),
+                            (float) getMeasuredHeight() / mOfflineMap.getMapBitmap().getHeight());
+                    getEngine().setMinZoom(minZoom, ZoomEngine.TYPE_REAL_ZOOM);
+                    getEngine().zoomTo(getEngine().getZoom() / getEngine().getRealZoom(), true);
+                }
+            }
+        });
+
         mCompassSensor = new CompassSensor(getContext(), this);
     }
 
@@ -188,6 +208,7 @@ public class Map extends PinchZoomImageView implements CompassSensor.Callback {
 
         float oldAccuracy = mCurrentAccuracy;
         float newAccuracy = mMyLocation.getAccuracy();
+        Log.d("ACC", "" + newAccuracy);
 
         // Cancels previous animation
         if(mCurrentAccuracyAnimation != null) {
