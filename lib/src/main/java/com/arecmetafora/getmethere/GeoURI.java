@@ -1,5 +1,6 @@
 package com.arecmetafora.getmethere;
 
+import android.location.Location;
 import android.net.Uri;
 
 import java.util.regex.Matcher;
@@ -9,6 +10,8 @@ import java.util.regex.Pattern;
  * Class to parse URI parts of a geo URI scheme
  */
 public class GeoURI {
+
+    private static final String GEO_URI_TEMPLATE = "geo:%s,%s";
 
     private static final Pattern GEO_URI_PATTERN =
             Pattern.compile("geo:([\\-0-9.]+),([\\-0-9.]+)(?:,([\\-0-9.]+))?(?:\\?(.*))?", Pattern.CASE_INSENSITIVE);
@@ -31,6 +34,10 @@ public class GeoURI {
         mLatitude = latitude;
         mLongitude = longitude;
         mAltitude = altitude;
+    }
+
+    public static Uri fromLocation(Location location) {
+        return Uri.parse(String.format(GEO_URI_TEMPLATE, location.getLatitude(), location.getLongitude()));
     }
 
     public static GeoURI parse(Uri uri) {

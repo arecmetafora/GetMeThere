@@ -16,7 +16,6 @@ import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.ViewTreeObserver;
 
 import com.otaliastudios.zoom.ZoomEngine;
@@ -25,7 +24,7 @@ import com.otaliastudios.zoom.ZoomImageView;
 /**
  * Offline map of a location`s neighborhood.
  */
-public class Map extends ZoomImageView implements CompassSensor.Callback {
+public class Map extends ZoomImageView implements CompassSensor.CompassSensorListener {
 
     /**
      * Drawable for this view
@@ -73,9 +72,7 @@ public class Map extends ZoomImageView implements CompassSensor.Callback {
      */
     private float mCurrentAccuracy = 0;
 
-    private CompassSensor mCompassSensor;
-
-    private boolean mSensorStarted = false;
+    // Drawing utils
     private Bitmap mLocationBitmap;
     private Bitmap mMyLocationOnlineBitmap;
     private Bitmap mMyLocationOfflineBitmap;
@@ -90,6 +87,21 @@ public class Map extends ZoomImageView implements CompassSensor.Callback {
     private ValueAnimator mCurrentAccuracyAnimation;
     private float mMyLocationIconSize;
 
+    /**
+     * Constructor that is called when inflating a view from XML. This is called
+     * when a view is being constructed from an XML file, supplying attributes
+     * that were specified in the XML file. This version uses a default style of
+     * 0, so the only attribute values applied are those in the Context's Theme
+     * and the given AttributeSet.
+     *
+     * <p>
+     * The method onFinishInflate() will be called after all children have been
+     * added.
+     *
+     * @param context The Context the view is running in, through which it can
+     *        access the current theme, resources, etc.
+     * @param attrs The attributes of the XML tag that is inflating the view.
+     */
     public Map(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
 
@@ -145,28 +157,10 @@ public class Map extends ZoomImageView implements CompassSensor.Callback {
                 }
             }
         });
-
-        mCompassSensor = new CompassSensor(getContext(), this);
     }
 
-    /**
-     * Starts the compass sensors.
-     *
-     * Must be used along with the activity/fragment lifecycle events.
-     */
-    public void onStart() {
-        mSensorStarted = true;
-        mCompassSensor.start();
-    }
-
-    /**
-     * Stops the compass sensors.
-     *
-     * Must be used along with the activity/fragment lifecycle events.
-     */
-    public void onStop() {
-        mSensorStarted = false;
-        mCompassSensor.stop();
+    @Override
+    public void onTrackingNewLocation(Location location) {
     }
 
     @Override
@@ -208,7 +202,6 @@ public class Map extends ZoomImageView implements CompassSensor.Callback {
 
         float oldAccuracy = mCurrentAccuracy;
         float newAccuracy = mMyLocation.getAccuracy();
-        Log.d("ACC", "" + newAccuracy);
 
         // Cancels previous animation
         if(mCurrentAccuracyAnimation != null) {
@@ -296,12 +289,9 @@ public class Map extends ZoomImageView implements CompassSensor.Callback {
      * @param offlineMap The offline map data.
      */
     public void setOfflineMap(OfflineMap offlineMap) {
-        mOfflineMap = offlineMap;
-        mCompassSensor.setLocationToTrack(offlineMap.getCenterGeoCoordinate());
-        this.setImageDrawable(new MapDrawable(offlineMap.getMapBitmap()));
-
-        if(mSensorStarted) {
-            mCompassSensor.start();
+        if(offlineMap != null) {
+            mOfflineMap = offlineMap;
+            this.setImageDrawable(new MapDrawable(offlineMap.getMapBitmap()));
         }
     }
 

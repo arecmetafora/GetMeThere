@@ -23,7 +23,7 @@ import java.text.DecimalFormat;
 /**
  * Compass which points to a specific location.
  */
-public class Compass extends View implements CompassSensor.Callback {
+public class Compass extends View implements CompassSensor.CompassSensorListener {
 
     // Defaults (units in DP)
     private static final int DEFAULT_ARC_COLOR = Color.argb(255, 31, 43, 76);
@@ -76,8 +76,6 @@ public class Compass extends View implements CompassSensor.Callback {
      * Distance between current user location and the tracked location.
      */
     private float mDistanceToLocation;
-
-    private CompassSensor mCompassSensor;
 
     // Utilities used to draw the compass
     private int mPointerMargin;
@@ -163,8 +161,6 @@ public class Compass extends View implements CompassSensor.Callback {
 
         initArcPaint();
         initTextPaint();
-
-        mCompassSensor = new CompassSensor(getContext(), this);
     }
 
     /**
@@ -187,30 +183,6 @@ public class Compass extends View implements CompassSensor.Callback {
         mTextPaint.setAntiAlias(true);
         mTextPaint.setStyle(Paint.Style.FILL);
         mTextPaint.setTextSize(mTextSize);
-    }
-
-    /**
-     * Starts the compass sensors.
-     *
-     * Must be used along with the activity/fragment lifecycle events.
-     */
-    public void onStart() {
-        mCompassSensor.start();
-    }
-
-    /**
-     * Stops the compass sensors.
-     *
-     * Must be used along with the activity/fragment lifecycle events.
-     */
-    public void onStop() {
-        mCompassSensor.stop();
-    }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        super.onDetachedFromWindow();
-        onStop();
     }
 
     @Override
@@ -282,6 +254,11 @@ public class Compass extends View implements CompassSensor.Callback {
             float yPos = mArcRect.centerY() + 2 * (mArcRect.bottom - mArcRect.centerY()) / 3 - mTextPaint.descent() / 2;
             canvas.drawText(distanceStr, xPos, yPos, mTextPaint);
         }
+    }
+
+    @Override
+    public void onTrackingNewLocation(Location location) {
+        mLocation = location;
     }
 
     @Override
@@ -402,15 +379,5 @@ public class Compass extends View implements CompassSensor.Callback {
      */
     public void setPointer(int pointerRes) {
         setPointer(getResources().getDrawable(pointerRes));
-    }
-
-    /**
-     * Sets the location of the place which this compass is pointing at.
-     *
-     * @param location The location of the place where this widget is pointing at.
-     */
-    public void setLocationToTrack(@NonNull Location location) {
-        mLocation = location;
-        mCompassSensor.setLocationToTrack(mLocation);
     }
 }

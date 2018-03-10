@@ -1,7 +1,12 @@
 package com.arecmetafora.getmethere;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.arch.lifecycle.Lifecycle;
+import android.arch.lifecycle.LifecycleObserver;
+import android.arch.lifecycle.OnLifecycleEvent;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -9,6 +14,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -16,10 +22,13 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
+import java.util.LinkedList;
+import java.util.List;
+
 /**
  * Location compass sensor, using GPS and device sensors.
  */
-public final class CompassSensor implements SensorEventListener {
+public final class CompassSensor implements SensorEventListener, LifecycleObserver {
 
     /**
      * Accuracy from compass sensors.
@@ -32,19 +41,26 @@ public final class CompassSensor implements SensorEventListener {
     }
 
     /**
-     * Callback to notify when the compass sensors found a new orientation angle.
+     * Represents an entity which is observing the compass for sensors changes.
      */
-    public interface Callback {
+    public interface CompassSensorListener {
 
         /**
-         * Notifies when the angle between user`s orientation and the desired location has changed.
+         * Callback trigger when any sensor value has changed (user's location, direction angle, etc).
          *
          * @param myLocation The current user location.
-         * @param bearingToLocation The angle from user`s orientation and the tracked location
-         * @param azimuth Azimuth to north pole
-         * @param accuracy Sensor accuracies
+         * @param bearingToLocation The angle between user`s orientation and the tracked location.
+         * @param azimuth Azimuth to north pole.
+         * @param accuracy Sensor accuracies.
          */
         void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth, Accuracy accuracy);
+
+        /**
+         * Callback trigger when the listener when the compass is targeting another location to be tracked.
+         *
+         * @param location The new location to be tracked.
+         */
+        void onTrackingNewLocation(Location location);
     }
 
     /**
@@ -56,6 +72,8 @@ public final class CompassSensor implements SensorEventListener {
      * Interval between location captures.
      */
     private static final int LOCATION_CAPTURE_INTERVAL = 3000;
+
+    private Context mContext;
 
     // GPS sensor
     private FusedLocationProviderClient mLocationProvider;
@@ -79,8 +97,10 @@ public final class CompassSensor implements SensorEventListener {
     private float mLastCalculatedBearingToLocation = 0;
     private float mNorthAzimuth = 0;
 
-    private Callback mListener;
+    // Listeners
+    private List<CompassSensorListener> mListeners;
 
+    // GPS sensor callback
     private LocationCallback mLocationCallback = new LocationCallback() {
         public void onLocationResult(LocationResult result) {
             mCurrentLocation = result.getLastLocation();
@@ -92,31 +112,34 @@ public final class CompassSensor implements SensorEventListener {
      * Creates a location compass sensor, using GPS and device orientation sensors.
      *
      * @param context The application context.
-     * @param listener The sensor listener.
+     * @param lifecycle Android life cycle controller.
      */
-    public CompassSensor(Context context, @NonNull Callback listener) {
-        this(context, null, listener);
+    public CompassSensor(@NonNull Context context, @NonNull Lifecycle lifecycle) {
+        this(context, lifecycle, null);
     }
 
     /**
      * Creates a location compass sensor, using GPS and device orientation sensors.
      *
      * @param context The application context.
-     * @param locationToTrack The location to be tracked by the sensors.
-     * @param listener The sensor listener.
+     * @param lifecycle Android life cycle controller.
+     * @param locationToTrack The location which the user is heading to.
      */
-    public CompassSensor(Context context, Location locationToTrack, @NonNull Callback listener) {
-        this.mListener = listener;
-        this.mLocationToTrack = locationToTrack;
+    public CompassSensor(@NonNull Context context, @NonNull Lifecycle lifecycle, Location locationToTrack) {
+        mContext = context;
+        mLocationToTrack = locationToTrack;
+        mListeners = new LinkedList<>();
 
-        mLocationProvider = LocationServices.getFusedLocationProviderClient(context);
+        lifecycle.addObserver(this);
+
+        mLocationProvider = LocationServices.getFusedLocationProviderClient(mContext);
 
         locationRequest = LocationRequest.create()
                 .setInterval(LOCATION_CAPTURE_INTERVAL)
                 .setFastestInterval(LOCATION_CAPTURE_INTERVAL)
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
-        mSensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
+        mSensorManager = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
         assert mSensorManager != null;
         mGravityFieldSensor = this.mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         mAccelerometerSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -124,10 +147,29 @@ public final class CompassSensor implements SensorEventListener {
     }
 
     /**
+     * Binds a compass sensor receiver to this sensor.
+     *
+     * @param listener The compass sensor listener.
+     * @return The same compass sensor instance.
+     */
+    public CompassSensor bindTo(CompassSensorListener listener) {
+        mListeners.add(listener);
+        return this;
+    }
+
+    /**
      * Starts the compass sensors.
      */
     @SuppressLint("MissingPermission")
+    @OnLifecycleEvent(Lifecycle.Event.ON_START)
     public void start() {
+
+        // Checking permissions
+        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
         if(mLocationToTrack != null) {
             mLocationProvider.requestLocationUpdates(locationRequest, mLocationCallback, null);
             mHasGravitySensor = mSensorManager.registerListener(this, mGravityFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
@@ -146,6 +188,7 @@ public final class CompassSensor implements SensorEventListener {
     /**
      * Stops the compass sensors.
      */
+    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
     public void stop() {
         mLocationProvider.removeLocationUpdates(mLocationCallback);
 
@@ -212,7 +255,7 @@ public final class CompassSensor implements SensorEventListener {
      * Notify when a sensor has changed.
      */
     private void notifySensorUpdate() {
-        if (mListener != null) {
+        if (mListeners.size() > 0) {
             Accuracy acc;
             if(mMagneticFieldSensorAccuracy >= 4) {
                 acc = Accuracy.HIGH;
@@ -224,7 +267,9 @@ public final class CompassSensor implements SensorEventListener {
                 acc = Accuracy.UNRELIABLE;
             }
 
-            mListener.onSensorUpdate(mCurrentLocation, mLastCalculatedBearingToLocation, mNorthAzimuth, acc);
+            for(CompassSensorListener listener : mListeners) {
+                listener.onSensorUpdate(mCurrentLocation, mLastCalculatedBearingToLocation, mNorthAzimuth, acc);
+            }
         }
     }
 
@@ -242,5 +287,8 @@ public final class CompassSensor implements SensorEventListener {
      */
     public void setLocationToTrack(Location locationToTrack) {
         this.mLocationToTrack = locationToTrack;
+        for(CompassSensorListener listener : mListeners) {
+            listener.onTrackingNewLocation(locationToTrack);
+        }
     }
 }

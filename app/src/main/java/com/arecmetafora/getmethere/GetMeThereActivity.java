@@ -7,27 +7,30 @@ import android.graphics.Color;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<OfflineMap>, CoordinatesChooser.Callback {
+public class GetMeThereActivity extends AppCompatActivity {
 
     private Map mMap;
     private Compass mCompass;
     private Location mLocationToTrack;
+    private CompassSensor mCompassSensor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_getmethere);
 
         mCompass = findViewById(R.id.compass);
         mMap = findViewById(R.id.map);
+
+        mCompassSensor = new CompassSensor(this, getLifecycle())
+                .bindTo(mMap)
+                .bindTo(mCompass);
 
         if(getIntent() != null && Intent.ACTION_VIEW.equals(getIntent().getAction()) &&
             getIntent().getData() != null && "geo".equals(getIntent().getData().getScheme())) {
@@ -39,22 +42,22 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
             }
         }
 
+        if(mLocationToTrack == null) {
+            mLocationToTrack = new Location("");
+            mLocationToTrack.setLatitude(-23.605689);
+            mLocationToTrack.setLongitude(-46.664609);
+        }
+
+        mCompassSensor.setLocationToTrack(mLocationToTrack);
+        mMap.setOfflineMap(OfflineGoogleMaps.fromLocation(this, mLocationToTrack));
+
+        // Check permissions
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(this,
                     new String[] { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION },
                     0);
-        }
-
-        if(mLocationToTrack == null) {
-            mLocationToTrack = new Location("");
-            mLocationToTrack.setLatitude(-23.605689);
-            mLocationToTrack.setLongitude(-46.664609);
-            onChoose(mLocationToTrack);
-            //new CoordinatesChooser().show(getSupportFragmentManager(), "tag");
-        } else {
-            onChoose(mLocationToTrack);
         }
     }
 
@@ -88,48 +91,8 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-        mCompass.onStart();
-        mMap.onStart();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        mCompass.onStop();
-        mMap.onStop();
-    }
-
-    @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        mCompass.onStart();
-    }
-
-    @Override
-    public Loader<OfflineMap> onCreateLoader(int id, Bundle args) {
-        return new MapLoader(this, mLocationToTrack);
-    }
-
-    @Override
-    public void onLoadFinished(Loader<OfflineMap> loader, OfflineMap data) {
-        mMap.setOfflineMap(data);
-    }
-
-    @Override
-    public void onLoaderReset(Loader<OfflineMap> loader) {
-    }
-
-    @Override
-    public void onCancel() {
-        this.finish();
-    }
-
-    @Override
-    public void onChoose(Location location) {
-        mLocationToTrack = location;
-        mCompass.setLocationToTrack(mLocationToTrack);
-        getSupportLoaderManager().initLoader(1, null, this);
+        mCompassSensor.start();
     }
 }

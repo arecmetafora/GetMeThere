@@ -11,18 +11,26 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
-        <activity android:name=".MainActivity">
+        <activity
+            android:name=".OfflineLocationsActivity"
+            android:label="@string/title_activity_offline_locations"
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity android:name=".GetMeThereActivity">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="geo"/>
+
+                <data android:scheme="geo" />
             </intent-filter>
         </activity>
+        <activity android:name=".LocationDownloaderActivity"></activity>
     </application>
 
 </manifest>
