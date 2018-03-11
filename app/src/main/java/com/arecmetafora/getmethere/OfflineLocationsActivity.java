@@ -47,7 +47,7 @@ public class OfflineLocationsActivity extends AppCompatActivity implements Offli
                 OfflineLocation location = mAdapter.removeItem(viewHolder.getLayoutPosition());
                 if(location.mapFile.delete()) {
                     Snackbar.make(findViewById(R.id.offline_locations_layout),
-                            String.format("The offline map %s was deleted", location.description),
+                            String.format(getString(R.string.offline_map_deleted), location.description),
                             Snackbar.LENGTH_LONG).show();
                 }
             }

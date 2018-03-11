@@ -13,7 +13,7 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".OfflineLocationsActivity"
-            android:label="@string/title_activity_offline_locations"
+            android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -21,7 +21,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".GetMeThereActivity">
+        <activity
+            android:name=".GetMeThereActivity">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -30,7 +31,7 @@
                 <data android:scheme="geo" />
             </intent-filter>
         </activity>
-        <activity android:name=".LocationDownloaderActivity"></activity>
+        <activity android:name=".LocationDownloaderActivity" />
     </application>
 
 </manifest>

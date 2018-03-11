@@ -23,9 +23,10 @@
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/offline_locations_list"
-        android:layout_marginTop="?android:attr/actionBarSize"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:layout_marginTop="?android:attr/actionBarSize"
+        android:background="@color/cardview_list_background"/>
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/offline_locations_add"

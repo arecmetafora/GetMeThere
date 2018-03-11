@@ -1,7 +1,9 @@
 <resources>
     <string name="app_name">Get Me There</string>
-    <string name="style">Style</string>
-    <string name="title_activity_offline_locations">Get Me There</string>
     <string name="location_to_search">Location to Search</string>
     <string name="confirm">Confirm</string>
+    <string name="could_not_retrieve_location">Could not retrieve location. Check your Internet connection.</string>
+    <string name="error_while_saving_location">An error occurred while saving location. Please, try again later.</string>
+    <string name="offline_map_deleted">The offline map %s was deleted.</string>
+    <string name="choose_map_description">Choose a name for your map</string>
 </resources>

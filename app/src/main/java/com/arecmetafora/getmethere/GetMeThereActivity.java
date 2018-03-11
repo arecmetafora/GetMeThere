@@ -9,9 +9,9 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
+import android.widget.Toast;
 
 public class GetMeThereActivity extends AppCompatActivity {
 
@@ -19,6 +19,8 @@ public class GetMeThereActivity extends AppCompatActivity {
     private Compass mCompass;
     private Location mLocationToTrack;
     private CompassSensor mCompassSensor;
+
+    int easterEggNumberOfTaps = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,25 +61,15 @@ public class GetMeThereActivity extends AppCompatActivity {
                     new String[] { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION },
                     0);
         }
+
+        mCompass.setOnClickListener((view) -> {
+            if(easterEggNumberOfTaps++ == 10) {
+                bookingEasterEgg();
+            }
+        });
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.main_menu, menu);
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if(item.getItemId() == R.id.main_menu_style) {
-            beautifyIt();
-            return true;
-        }
-        return false;
-    }
-
-    private void beautifyIt() {
+    private void bookingEasterEgg() {
         float density = getResources().getDisplayMetrics().density;
 
         mMap.setLocationIcon(R.drawable.location_booking);
@@ -88,6 +80,8 @@ public class GetMeThereActivity extends AppCompatActivity {
         mCompass.setTextColor(Color.argb(255, 0, 158, 230));
         mCompass.setLocationIcon(R.drawable.location_hotel);
         mCompass.setPointer(R.drawable.compass_pointer);
+
+        Toast.makeText(this, "Hello, Booking.com! Hire me, please! :)", Toast.LENGTH_LONG).show();
     }
 
     @Override
