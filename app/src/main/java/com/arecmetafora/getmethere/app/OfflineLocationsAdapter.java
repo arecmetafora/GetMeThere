@@ -1,4 +1,4 @@
-package com.arecmetafora.getmethere;
+package com.arecmetafora.getmethere.app;
 
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;

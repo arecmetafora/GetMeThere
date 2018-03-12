@@ -20,7 +20,7 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.google.android.gms:play-services-location:11.4.2'
+    implementation 'com.google.android.gms:play-services-location:11.8.0'
 
     compile 'com.otaliastudios:zoomlayout:1.1.0'
 

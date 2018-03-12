@@ -1,4 +1,4 @@
-package com.arecmetafora.getmethere;
+package com.arecmetafora.getmethere.app;
 
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
@@ -11,6 +11,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.View;
+import com.arecmetafora.getmethere.GeoURI;
 
 public class OfflineLocationsActivity extends AppCompatActivity implements OfflineLocationsAdapter.Callback {
 

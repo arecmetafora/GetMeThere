@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.arecmetafora.getmethere.LocationDownloaderActivity">
+    tools:context="com.arecmetafora.getmethere.app.LocationDownloaderActivity">
 
     <android.support.design.widget.TextInputLayout
         android:id="@+id/location_downloader_search_layout"

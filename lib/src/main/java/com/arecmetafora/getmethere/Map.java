@@ -80,8 +80,8 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
     private RectF mLocationRect;
     private RectF mMyLocationRect;
     private RectF mMyLocationBearingRect;
-    private Paint mAccuracyRadiusContour;
     private Paint mAccuracyRadiusFill;
+    private Paint mImagePaint = new Paint(Paint.DITHER_FLAG);
     private Matrix mLocationMatrix;
     private ValueAnimator mCurrentSensorAnimation;
     private ValueAnimator mCurrentAccuracyAnimation;
@@ -135,13 +135,9 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
         mMyLocationBearingRect = new RectF();
         mLocationMatrix = new Matrix();
 
-        mAccuracyRadiusContour = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mAccuracyRadiusContour.setColor(0x110000FF);
-        mAccuracyRadiusContour.setStyle(Paint.Style.FILL);
-
         mAccuracyRadiusFill = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mAccuracyRadiusFill.setColor(0xFF0000FF);
-        mAccuracyRadiusFill.setStyle(Paint.Style.STROKE);
+        mAccuracyRadiusFill.setColor(Color.argb(77, 66, 133, 244));
+        mAccuracyRadiusFill.setStyle(Paint.Style.FILL);
 
         getEngine().setMaxZoom(5f, ZoomEngine.TYPE_REAL_ZOOM);
         getEngine().setMinZoom(1f, ZoomEngine.TYPE_REAL_ZOOM);
@@ -229,19 +225,6 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
      */
     private void drawMapOverlay(Canvas canvas, int width, int height, float zoomScale) {
 
-        Paint mPaint = new Paint();
-        mPaint.setColor(Color.argb(255, 31, 43, 76));
-        mPaint.setAntiAlias(true);
-        mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeWidth(4);
-
-        // Location to track is always the center of this map
-        mLocationRect.set(0, 0, mLocationBitmap.getWidth() / zoomScale, mLocationBitmap.getHeight() / zoomScale);
-        mLocationRect.offsetTo(
-                width/2f - mLocationRect.width()/2,
-                height/2f - mLocationRect.height());
-        canvas.drawBitmap(mLocationBitmap, null, mLocationRect, mPaint);
-
         if(mMyLocation != null) {
 
             PointF myLocationXY = mOfflineMap.projectToPixel(mMyLocation);
@@ -250,7 +233,6 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
             float radius = mOfflineMap.projectDistanceFromCenter(mCurrentAccuracy);
             if (radius > mMyLocationRect.width()/4) {
                 canvas.drawCircle(myLocationXY.x, myLocationXY.y, radius, mAccuracyRadiusFill);
-                canvas.drawCircle(myLocationXY.x, myLocationXY.y, radius, mAccuracyRadiusContour);
             }
 
             Bitmap myLocationBitmap;
@@ -270,7 +252,7 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
                 mLocationMatrix.postTranslate(-mMyLocationBearingRect.width() / 2, -mMyLocationBearingRect.height() / 2);
                 mLocationMatrix.postRotate(mAzimuth);
                 mLocationMatrix.postTranslate(myLocationXY.x, myLocationXY.y);
-                canvas.drawBitmap(mMyLocationBearingBitmap, mLocationMatrix, mPaint);
+                canvas.drawBitmap(mMyLocationBearingBitmap, mLocationMatrix, mImagePaint);
             }
 
             // Pointer (blue dot) of my current location
@@ -279,8 +261,15 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
             mMyLocationRect.offsetTo(
                     myLocationXY.x - mMyLocationRect.width()/2f,
                     myLocationXY.y - mMyLocationRect.width()/2f);
-            canvas.drawBitmap(myLocationBitmap, null, mMyLocationRect, mPaint);
+            canvas.drawBitmap(myLocationBitmap, null, mMyLocationRect, mImagePaint);
         }
+
+        // Location to track is always the center of this map
+        mLocationRect.set(0, 0, mLocationBitmap.getWidth() / zoomScale, mLocationBitmap.getHeight() / zoomScale);
+        mLocationRect.offsetTo(
+                width/2f - mLocationRect.width()/2,
+                height/2f - mLocationRect.height());
+        canvas.drawBitmap(mLocationBitmap, null, mLocationRect, mImagePaint);
     }
 
     /**

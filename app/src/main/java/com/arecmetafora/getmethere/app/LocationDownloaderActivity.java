@@ -1,9 +1,12 @@
-package com.arecmetafora.getmethere;
+package com.arecmetafora.getmethere.app;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.DialogFragment;
@@ -19,6 +22,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.util.Locale;
+
 public class LocationDownloaderActivity extends AppCompatActivity {
 
     public static class GetMapDescriptionDialog extends DialogFragment {
@@ -31,6 +36,12 @@ public class LocationDownloaderActivity extends AppCompatActivity {
                     .setTitle(getResources().getString(R.string.choose_map_description))
                     .setPositiveButton(android.R.string.ok,
                         (DialogInterface dialog, int whichButton) -> {
+
+                            InputMethodManager imm = (InputMethodManager) getContext()
+                                    .getSystemService(Context.INPUT_METHOD_SERVICE);
+                            assert imm != null;
+                            imm.hideSoftInputFromWindow(inputField.getWindowToken(), 0);
+
                             ((LocationDownloaderActivity)getActivity())
                                     .saveLocation(inputField.getText().toString());
                             dismiss();
@@ -49,6 +60,7 @@ public class LocationDownloaderActivity extends AppCompatActivity {
     }
 
     private static final String PARAM_OFFLINE_LOCATION = "OFFLINE_LOCATION";
+    private static final String LOCATION_TO_DOWNLOAD = "LOCATION_TO_DOWNLOAD";
 
     private EditText mTxtSearchLocation;
     private ImageView mImgLocation;
@@ -82,8 +94,13 @@ public class LocationDownloaderActivity extends AppCompatActivity {
         });
 
         if(savedInstanceState != null && savedInstanceState.containsKey(PARAM_OFFLINE_LOCATION)) {
-            mLastSearchedLocation = (OfflineLocation) savedInstanceState.getSerializable(PARAM_OFFLINE_LOCATION);
+            mLastSearchedLocation = (OfflineLocation) savedInstanceState.getParcelable(PARAM_OFFLINE_LOCATION);
             loadLocation(mLastSearchedLocation);
+        } else if(savedInstanceState == null && getIntent().hasExtra(LOCATION_TO_DOWNLOAD)) {
+            Location location = getIntent().getParcelableExtra(LOCATION_TO_DOWNLOAD);
+            mTxtSearchLocation.setText(String.format(Locale.US,
+                    "%.6f,%.6f", location.getLatitude(), location.getLongitude()));
+            onSearchLocation(mTxtSearchLocation);
         }
     }
 
@@ -91,7 +108,7 @@ public class LocationDownloaderActivity extends AppCompatActivity {
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         if(mLastSearchedLocation != null) {
-            outState.putSerializable(PARAM_OFFLINE_LOCATION, mLastSearchedLocation);
+            outState.putParcelable(PARAM_OFFLINE_LOCATION, mLastSearchedLocation);
         }
     }
 
@@ -145,9 +162,17 @@ public class LocationDownloaderActivity extends AppCompatActivity {
                     break;
 
                 case SUCCESS:
+                    setResult(RESULT_OK);
                     finish();
                     break;
             }
         });
+    }
+
+    static void requestDownloadLocation(Activity activity, Location location) {
+        Intent intent = new Intent(activity, LocationDownloaderActivity.class);
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.putExtra(LOCATION_TO_DOWNLOAD, location);
+        activity.startActivityForResult(intent, 0);
     }
 }

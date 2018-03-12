@@ -1,4 +1,4 @@
-package com.arecmetafora.getmethere;
+package com.arecmetafora.getmethere.app;
 
 import android.annotation.SuppressLint;
 import android.app.Application;
@@ -18,6 +18,9 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import com.arecmetafora.getmethere.OfflineGoogleMaps;
 
 class OfflineLocationViewModel extends AndroidViewModel {
 
@@ -98,14 +101,32 @@ class OfflineLocationViewModel extends AndroidViewModel {
             @Override
             protected OfflineLocation doInBackground(String... locations) {
                 try {
-                    List<Address> addresses = new Geocoder(getApplication())
-                            .getFromLocationName(locations[0], 1);
+                    List<Address> addresses;
+
+                    Pattern pattern = Pattern.compile("([\\-0-9\\.]+)\\s*,\\s*([\\-0-9\\.]+)");
+                    Matcher matcher = pattern.matcher(locations[0]);
+                    double latitude = 0;
+                    double longitude = 0;
+                    if(matcher.matches()) {
+                        latitude = Double.valueOf(matcher.group(1));
+                        longitude = Double.valueOf(matcher.group(2));
+                        addresses = new Geocoder(getApplication())
+                                .getFromLocation(latitude, longitude, 1);
+                    } else {
+                        addresses = new Geocoder(getApplication())
+                                .getFromLocationName(locations[0], 1);
+                    }
 
                     if(addresses != null && addresses.size() > 0) {
                         Address address = addresses.get(0);
                         Location location = new Location("");
-                        location.setLatitude(address.getLatitude());
-                        location.setLongitude(address.getLongitude());
+                        if(latitude != 0 && longitude != 0) {
+                            location.setLatitude(latitude);
+                            location.setLongitude(longitude);
+                        } else {
+                            location.setLatitude(address.getLatitude());
+                            location.setLongitude(address.getLongitude());
+                        }
 
                         OfflineLocation sample = new OfflineLocation();
                         sample.location = location;

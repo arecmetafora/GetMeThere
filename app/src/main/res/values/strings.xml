@@ -6,4 +6,6 @@
     <string name="error_while_saving_location">An error occurred while saving location. Please, try again later.</string>
     <string name="offline_map_deleted">The offline map %s was deleted.</string>
     <string name="choose_map_description">Choose a name for your map</string>
+    <string name="offline_location_not_downloaded">Offline location not downloaded.</string>
+    <string name="offline_location_download">Download</string>
 </resources>
