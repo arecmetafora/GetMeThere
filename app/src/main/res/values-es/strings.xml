@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Get Me There</string>
+    <string name="offline_location_download">Descargar</string>
+    <string name="location_to_search">"Ubicación para buscar "</string>
+    <string name="confirm">Confirmar</string>
+    <string name="could_not_retrieve_location">No fue possible buscar por la ubicación. Verifique su conexión a Internet</string>
+    <string name="offline_map_deleted">El mapa % s fue eliminado.</string>
+    <string name="choose_map_description">Elige un nombre para tu mapa</string>
+    <string name="offline_location_not_downloaded">Mapa de la ubicación no disponible.</string>
+    <string name="error_while_saving_location">Se produjo un error durante la descarga de la ubicación. Por favor, inténtelo de nuevo más tarde.</string>
+</resources>
