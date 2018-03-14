@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.arch.lifecycle.Lifecycle;
 import android.arch.lifecycle.LifecycleObserver;
+import android.arch.lifecycle.LifecycleOwner;
 import android.arch.lifecycle.OnLifecycleEvent;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -95,7 +96,9 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     private float[] mGravityData;
     private float[] mMagneticFieldData;
     private float mLastCalculatedBearingToLocation = 0;
-    private float mNorthAzimuth = 0;
+    private float mNorthAzimuth = Float.MIN_VALUE;
+
+    private final Object mMonitor = new Object();
 
     // Listeners
     private List<CompassSensorListener> mListeners;
@@ -103,8 +106,12 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     // GPS sensor callback
     private LocationCallback mLocationCallback = new LocationCallback() {
         public void onLocationResult(LocationResult result) {
-            mCurrentLocation = result.getLastLocation();
-            notifySensorUpdate();
+            synchronized (mMonitor) {
+                mCurrentLocation = result.getLastLocation();
+                if(mNorthAzimuth != Float.MIN_VALUE) {
+                    notifySensorUpdate();
+                }
+            }
         }
     };
 
@@ -112,25 +119,15 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
      * Creates a location compass sensor, using GPS and device orientation sensors.
      *
      * @param context The application context.
-     * @param lifecycle Android life cycle controller.
-     */
-    public CompassSensor(@NonNull Context context, @NonNull Lifecycle lifecycle) {
-        this(context, lifecycle, null);
-    }
-
-    /**
-     * Creates a location compass sensor, using GPS and device orientation sensors.
-     *
-     * @param context The application context.
-     * @param lifecycle Android life cycle controller.
+     * @param lifecycleOwner Android life cycle controller.
      * @param locationToTrack The location which the user is heading to.
      */
-    public CompassSensor(@NonNull Context context, @NonNull Lifecycle lifecycle, Location locationToTrack) {
+    private CompassSensor(@NonNull Context context, @NonNull LifecycleOwner lifecycleOwner, Location locationToTrack) {
         mContext = context;
         mLocationToTrack = locationToTrack;
         mListeners = new LinkedList<>();
 
-        lifecycle.addObserver(this);
+        lifecycleOwner.getLifecycle().addObserver(this);
 
         mLocationProvider = LocationServices.getFusedLocationProviderClient(mContext);
 
@@ -147,6 +144,16 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     }
 
     /**
+     * Creates a location compass sensor, using GPS and device orientation sensors.
+     *
+     * @param context The application context.
+     * @param lifecycleOwner Android life cycle controller.
+     */
+    public static CompassSensor from(Context context, LifecycleOwner lifecycleOwner) {
+        return new CompassSensor(context, lifecycleOwner, null);
+    }
+
+    /**
      * Binds a compass sensor receiver to this sensor.
      *
      * @param listener The compass sensor listener.
@@ -154,6 +161,23 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
      */
     public CompassSensor bindTo(CompassSensorListener listener) {
         mListeners.add(listener);
+        if(this.mLocationToTrack != null) {
+            listener.onTrackingNewLocation(this.mLocationToTrack);
+        }
+        return this;
+    }
+
+    /**
+     * Sets the location to track.
+     *
+     * @param locationToTrack The location which the angle with the device orientation will be calculated.
+     * @return The same compass sensor instance.
+     */
+    public CompassSensor track(Location locationToTrack) {
+        this.mLocationToTrack = locationToTrack;
+        for(CompassSensorListener listener : mListeners) {
+            listener.onTrackingNewLocation(locationToTrack);
+        }
         return this;
     }
 
@@ -185,6 +209,13 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
         }
     }
 
+    @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+    protected void destroy() {
+        // Just to make sure nothing gets leaked
+        mListeners.clear();
+        mContext = null;
+    }
+
     /**
      * Stops the compass sensors.
      */
@@ -211,19 +242,21 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     @Override
     public void onSensorChanged(SensorEvent event) {
 
-        switch (event.sensor.getType()) {
-            case Sensor.TYPE_GRAVITY:
-                mGravityData = event.values;
-                break;
-            case Sensor.TYPE_ACCELEROMETER:
-                mGravityData = event.values;
-                break;
-            case Sensor.TYPE_MAGNETIC_FIELD:
-                mMagneticFieldData = event.values;
-                break;
-        }
+        synchronized (mMonitor) {
+            switch (event.sensor.getType()) {
+                case Sensor.TYPE_GRAVITY:
+                    mGravityData = event.values;
+                    break;
+                case Sensor.TYPE_ACCELEROMETER:
+                    mGravityData = event.values;
+                    break;
+                case Sensor.TYPE_MAGNETIC_FIELD:
+                    mMagneticFieldData = event.values;
+                    break;
+            }
 
-        onSensorValueChanged();
+            onSensorValueChanged();
+        }
     }
 
     /**
@@ -277,18 +310,6 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         if(sensor == mMagneticFieldSensor) {
             mMagneticFieldSensorAccuracy = accuracy;
-        }
-    }
-
-    /**
-     * Sets the location to track.
-     *
-     * @param locationToTrack The location which the angle with the device orientation will be calculated.
-     */
-    public void setLocationToTrack(Location locationToTrack) {
-        this.mLocationToTrack = locationToTrack;
-        for(CompassSensorListener listener : mListeners) {
-            listener.onTrackingNewLocation(locationToTrack);
         }
     }
 }

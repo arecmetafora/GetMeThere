@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 
 import com.arecmetafora.getmethere.OfflineGoogleMaps;
 
-class OfflineLocationViewModel extends AndroidViewModel {
+public class OfflineLocationViewModel extends AndroidViewModel {
 
     class OfflineLocationLiveData extends MutableLiveData<List<OfflineLocation>> {
 
@@ -46,7 +46,7 @@ class OfflineLocationViewModel extends AndroidViewModel {
 
     private OfflineLocationLiveData mSavedLocations;
 
-    OfflineLocationViewModel(@NonNull Application application) {
+    public OfflineLocationViewModel(@NonNull Application application) {
         super(application);
     }
 
@@ -131,7 +131,7 @@ class OfflineLocationViewModel extends AndroidViewModel {
                         OfflineLocation sample = new OfflineLocation();
                         sample.location = location;
                         sample.description = description;
-                        sample.mapBitmap = OfflineGoogleMaps.getSample(getApplication(), location);
+                        sample.mapBitmap = OfflineGoogleMaps.getSample(location);
                         return sample;
                     }
 

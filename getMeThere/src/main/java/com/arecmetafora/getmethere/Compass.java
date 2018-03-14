@@ -270,6 +270,13 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
             return;
         }
 
+        // First update
+        if(mLocationBearing == Integer.MIN_VALUE) {
+            mLocationBearing = bearingToLocation;
+            invalidate();
+            return;
+        }
+
         float newBearing = bearingToLocation;
         float oldBearing = mLocationBearing;
 

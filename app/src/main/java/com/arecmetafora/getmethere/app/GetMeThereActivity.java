@@ -1,6 +1,7 @@
 package com.arecmetafora.getmethere.app;
 
 import android.Manifest;
+import android.arch.lifecycle.LifecycleOwner;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -62,11 +63,11 @@ public class GetMeThereActivity extends AppCompatActivity {
         mCompass = findViewById(R.id.compass);
         mMap = findViewById(R.id.map);
 
-        mCompassSensor = new CompassSensor(this, getLifecycle())
+        mCompassSensor = CompassSensor.from(this, (LifecycleOwner) this)
                 .bindTo(mMap)
-                .bindTo(mCompass);
+                .bindTo(mCompass)
+                .track(mLocationToTrack);
 
-        mCompassSensor.setLocationToTrack(mLocationToTrack);
         mMap.setOfflineMap(offlineMap);
 
         // Check permissions

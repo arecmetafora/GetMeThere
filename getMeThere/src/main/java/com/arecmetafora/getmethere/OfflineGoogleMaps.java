@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory;
 import android.location.Location;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.net.HttpURLConnection;
@@ -75,8 +74,6 @@ public class OfflineGoogleMaps extends OfflineMap {
             centerLocation.setLatitude(Double.parseDouble(m.group(1)));
             centerLocation.setLongitude(Double.parseDouble(m.group(2)));
 
-            double zoom = Double.parseDouble(m.group(3));
-
             Bitmap mapImage = BitmapFactory.decodeFile(file.getAbsolutePath());
 
             return new OfflineGoogleMaps(mapImage, centerLocation, DEFAULT_ZOOM_LEVEL, OfflineGoogleMaps.Scale.ENHANCED);
@@ -111,10 +108,9 @@ public class OfflineGoogleMaps extends OfflineMap {
     /**
      * Gets a sample image of a GoogleMaps map.
      *
-     * @param context The application context.
      * @param location The location that will be the center of the map.
      */
-    public static Bitmap getSample(Context context, Location location) {
+    public static Bitmap getSample(Location location) {
 
         String url = String.format(Locale.US,DOWNLOAD_URL_TEMPLATE + "&markers=color:red%%7C%s,%s",
                 location.getLatitude(), location.getLongitude(),

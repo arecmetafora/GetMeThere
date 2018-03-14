@@ -6,7 +6,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import java.io.File;
-import java.io.Serializable;
 
 class OfflineLocation implements Parcelable {
 
@@ -20,6 +19,27 @@ class OfflineLocation implements Parcelable {
     transient Bitmap mapBitmap;
     String description;
     Location location;
+
+    OfflineLocation() {
+    }
+
+    OfflineLocation(Parcel in) {
+        description = in.readString();
+        location = in.readParcelable(Location.class.getClassLoader());
+    }
+
+    // I do not know why I need this, but Android Studio say I do, so I do.
+    public static final Creator<OfflineLocation> CREATOR = new Creator<OfflineLocation>() {
+        @Override
+        public OfflineLocation createFromParcel(Parcel in) {
+            return new OfflineLocation(in);
+        }
+
+        @Override
+        public OfflineLocation[] newArray(int size) {
+            return new OfflineLocation[size];
+        }
+    };
 
     @Override
     public int describeContents() {

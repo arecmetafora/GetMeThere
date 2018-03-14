@@ -94,7 +94,7 @@ public class LocationDownloaderActivity extends AppCompatActivity {
         });
 
         if(savedInstanceState != null && savedInstanceState.containsKey(PARAM_OFFLINE_LOCATION)) {
-            mLastSearchedLocation = (OfflineLocation) savedInstanceState.getParcelable(PARAM_OFFLINE_LOCATION);
+            mLastSearchedLocation = savedInstanceState.getParcelable(PARAM_OFFLINE_LOCATION);
             loadLocation(mLastSearchedLocation);
         } else if(savedInstanceState == null && getIntent().hasExtra(LOCATION_TO_DOWNLOAD)) {
             Location location = getIntent().getParcelableExtra(LOCATION_TO_DOWNLOAD);
