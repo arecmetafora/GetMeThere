@@ -1,7 +1,7 @@
 
 # GetMeThere
 
-GetMeThere consists in a set of views and tools to help you build offline applications to guide a user to get to a specific location on globe.
+GetMeThere consists in a set of views and tools to help you build offline applications to guide a user to get to a specific location on the globe.
 
 ```JavaScript
 compile 'com.arecmetafora:getMeThere:1.0.0'
@@ -11,12 +11,12 @@ compile 'com.arecmetafora:getMeThere:1.0.0'
 
 GetMeThere provides two out-of-the-box UI components to work with offline navigation and georeference:  `Map` and `Compass`
 
-A `Map` is a tiny and lightweight offline map of a specific location's neighborhood. It helps users to find their way home by providing a simple guidance thought a small offline map. It is very useful when the user needs to get an overview about his roundness and can be used in a variety of situations, as instance, finding his hotel, points of interests in a tracking challenge, etc.
+A `Map` is a tiny and lightweight offline map of a specific location's neighborhood. It helps users to find their way home by providing a simple guidance through a small offline map. It is very useful when the user needs to get an overview about his surroundings and can be used in a variety of situations, for instance, finding his hotel, points of interests in a tracking challenge, etc.
 
 <img src="https://github.com/arecmetafora/GetMeThere/raw/master/Screenshot.png" width="300" align="middle">
 
 
-You can declare a `Map` via XML and shown in the example below:
+You can declare a `Map` via XML as shown in the example below:
 
 ```XML
 <com.arecmetafora.getmethere.Map
@@ -33,9 +33,9 @@ You can declare a `Map` via XML and shown in the example below:
 ```
 _The custom styles (under `lib` namespace) are optional._
 
-After declaring your `Map` view, you still need to set an offline map which contains the map itself that will be drawn. How to do that will be described later, in the **Offline Maps** section.
+After declaring your `Map` view, you still need to set an offline map which contains the map image that will be drawn. How to do that will be described later, in the **Offline Maps** section.
 
-A `Compass` is like a common compass used for navigation. However, instead of pointing to magnetic north, it points to a location that the user is heading to. Also, in addition to the pointer, it provides the distance between the current user's location and the point of interest, in meters.
+A `Compass` is like a common compass used for navigation. However, instead of pointing to magnetic north, it points to the location that the user is heading to. Also, in addition to the pointer, it provides the distance between the current user's location and the point of interest, in meters.
 
 Its declaration in XML can be done in the following way:
 
@@ -52,7 +52,7 @@ _The custom styles (under `lib` namespace) are optional._
 
 # Compass Sensors
 
-To get the UI components working you need to bind them to a `CompassSensor`. This class is responsible for tracking a location, providing callbacks with the current user's location, the distance in meters between the current location and the point of interest, the north azimuth and the azimuth between the user's orientation and the location, etc.
+To get the UI components working you need to bind them to a `CompassSensor`. This class is responsible for tracking a location, providing callbacks with the current user's location, the distance in meters between the current location and the point of interest, the north [azimuth](https://en.wikipedia.org/wiki/Azimuth) and the azimuth between the user's orientation and the location, etc.
 
 You can bind a `CompassSensor` to any object which class implements the  `CompassSensor.CompassSensorListener` interface.
 
