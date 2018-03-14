@@ -3,7 +3,7 @@
 
 GetMeThere consists in a set of views and tools to help you build offline applications to guide a user to get to a specific location on the globe.
 
-```JavaScript
+```groovy
 compile 'com.arecmetafora:getMeThere:1.0.0'
 ```
 
@@ -13,7 +13,7 @@ GetMeThere provides two out-of-the-box UI components to work with offline naviga
 
 A `Map` is a tiny and lightweight offline map of a specific location's neighborhood. It helps users to find their way home by providing a simple guidance through a small offline map. It is very useful when the user needs to get an overview about his surroundings and can be used in a variety of situations, for instance, finding his hotel, points of interests in a tracking challenge, etc.
 
-<img src="https://github.com/arecmetafora/GetMeThere/raw/master/Screenshot.png" width="300" align="middle">
+<img src="https://github.com/arecmetafora/GetMeThere/raw/master/Video.gif" width="300" align="middle">
 
 
 You can declare a `Map` via XML as shown in the example below:
@@ -58,7 +58,7 @@ You can bind a `CompassSensor` to any object which class implements the  `Compas
 
 The bind of a `CompassSensor` to a UI component can be done in the `onCreate` method of your Activity, as shown below:
 
-```Java
+```java
 mCompass = findViewById(R.id.compass);
 mMap = findViewById(R.id.map);
 Location location = ...; // Where the user is heading to
@@ -79,7 +79,7 @@ So that your `Map` can work entirely offline, you need to provide it with an off
 
 The example below shows how to create an offline GoogleMaps map:
 
-```Java
+```java
 OfflineGoogleMaps.cache(context, location, description);
 ```
 
@@ -87,7 +87,7 @@ This method will download a map with the default resolution of 1200x800 pixels (
 
 After downloaded, you can load this map and append to a `Map` by calling the method `setOfflineMap` as show below:
 
-```Java
+```java
 OfflineMap offlineMap =  OfflineGoogleMaps.fromLocation(context, location);
 mMap.setOfflineMap(offlineMap);
 ```
