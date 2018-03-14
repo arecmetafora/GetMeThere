@@ -13,10 +13,8 @@ GetMeThere provides two out-of-the-box UI components to work with offline naviga
 
 A `Map` is a tiny and lightweight offline map of a specific location's neighborhood. It helps users to find their way home by providing a simple guidance thought a small offline map. It is very useful when the user needs to get an overview about his roundness and can be used in a variety of situations, as instance, finding his hotel, points of interests in a tracking challenge, etc.
 
-<div>
-<img src="https://github.com/arecmetafora/GetMeThere/raw/master/Screenshot.png" width="300" style="margin-right: 50px">
-<img src="https://github.com/arecmetafora/GetMeThere/raw/master/Video.png" width="300" style="margin-left: 50px">
-</div>
+<img src="https://github.com/arecmetafora/GetMeThere/raw/master/Screenshot.png" width="300" align="center">
+
 
 You can declare a `Map` via XML and shown in the example below:
 
