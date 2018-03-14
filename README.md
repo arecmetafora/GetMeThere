@@ -3,7 +3,7 @@
 
 GetMeThere consists in a set of views and tools to help you build offline applications to guide a user to get to a specific location on globe.
 
-```java
+```JavaScript
 compile 'com.arecmetafora:getMeThere:1.0.0'
 ```
 
@@ -14,21 +14,23 @@ GetMeThere provides two out-of-the-box UI components to work with offline naviga
 A `Map` is a tiny and lightweight offline map of a specific location's neighborhood. It helps users to find their way home by providing a simple guidance thought a small offline map. It is very useful when the user needs to get an overview about his roundness and can be used in a variety of situations, as instance, finding his hotel, points of interests in a tracking challenge, etc.
 
 !(https://raw.githubusercontent.com/arecmetafora/GetMeThere/branch/Screenshot.png)!
+
 !(https://raw.githubusercontent.com/arecmetafora/GetMeThere/branch/Video.gif)!
 
 You can declare a `Map` via XML and shown in the example below:
 
-```xml
+```XML
 <com.arecmetafora.getmethere.Map
-android:id="@+id/map"
-android:layout_width="match_parent"
-android:layout_height="300dp"
-lib:arcWidth="@dimen/map_arc_width"
-lib:arcColor="@color/map_arc"
-lib:textSize="@dimen/map_distance_text_size"
-lib:textColor="@color/map_distance"
-lib:pointer="@drawable/map_location_pointer"
-lib:locationIcon="@drawable/map_location_pin"/>
+    xmlns:lib="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/map"
+    android:layout_width="match_parent"
+    android:layout_height="300dp"
+    lib:arcWidth="@dimen/map_arc_width"
+    lib:arcColor="@color/map_arc"
+    lib:textSize="@dimen/map_distance_text_size"
+    lib:textColor="@color/map_distance"
+    lib:pointer="@drawable/map_location_pointer"
+    lib:locationIcon="@drawable/map_location_pin"/>
 ```
 _The custom styles (under `lib` namespace) are optional._
 
@@ -38,13 +40,13 @@ A `Compass` is like a common compass used for navigation. However, instead of po
 
 Its declaration in XML can be done in the following way:
 
-```xml
+```XML
 <com.arecmetafora.getmethere.Compass
-xmlns:lib="http://schemas.android.com/apk/res-auto"
-android:id="@+id/compass"
-android:layout_width="match_parent"
-android:layout_height="300dp"
-lib:locationIcon="@drawable/compass_location"/>
+    xmlns:lib="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/compass"
+    android:layout_width="match_parent"
+    android:layout_height="300dp"
+    lib:locationIcon="@drawable/compass_location"/>
 ```
 
 _The custom styles (under `lib` namespace) are optional._
@@ -57,7 +59,7 @@ You can bind a `CompassSensor` to any object which class implements the  `Compas
 
 The bind of a `CompassSensor` to a UI component can be done in the `onCreate` method of your Activity, as shown below:
 
-```java
+```Java
 mCompass = findViewById(R.id.compass);
 mMap = findViewById(R.id.map);
 Location location = ...; // Where the user is heading to
@@ -78,7 +80,7 @@ So that your `Map` can work entirely offline, you need to provide it with an off
 
 The example below shows how to create an offline GoogleMaps map:
 
-```java
+```Java
 OfflineGoogleMaps.cache(context, location, description);
 ```
 
@@ -86,9 +88,8 @@ This method will download a map with the default resolution of 1200x800 pixels (
 
 After downloaded, you can load this map and append to a `Map` by calling the method `setOfflineMap` as show below:
 
-```java
+```Java
 OfflineMap offlineMap =  OfflineGoogleMaps.fromLocation(context, location);
-
 mMap.setOfflineMap(offlineMap);
 ```
 
