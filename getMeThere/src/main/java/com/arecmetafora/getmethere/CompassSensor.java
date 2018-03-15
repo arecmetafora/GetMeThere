@@ -81,7 +81,7 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     private LocationRequest locationRequest;
     private Location mCurrentLocation;
     private Location mLocationToTrack;
-    private int mMagneticFieldSensorAccuracy;
+    private int mMagneticFieldSensorAccuracy = SensorManager.SENSOR_STATUS_ACCURACY_HIGH;
 
     // Orientation sensors
     private SensorManager mSensorManager;
@@ -149,7 +149,7 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
      * @param context The application context.
      * @param lifecycleOwner Android life cycle controller.
      */
-    public static CompassSensor from(Context context, LifecycleOwner lifecycleOwner) {
+    public static CompassSensor from(@NonNull Context context, @NonNull LifecycleOwner lifecycleOwner) {
         return new CompassSensor(context, lifecycleOwner, null);
     }
 
@@ -290,11 +290,11 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     private void notifySensorUpdate() {
         if (mListeners.size() > 0) {
             Accuracy acc;
-            if(mMagneticFieldSensorAccuracy >= 4) {
+            if(mMagneticFieldSensorAccuracy >= SensorManager.SENSOR_STATUS_ACCURACY_HIGH) {
                 acc = Accuracy.HIGH;
-            } else if(mMagneticFieldSensorAccuracy == 3) {
+            } else if(mMagneticFieldSensorAccuracy == SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM) {
                 acc = Accuracy.MEDIUM;
-            } else if(mMagneticFieldSensorAccuracy == 2) {
+            } else if(mMagneticFieldSensorAccuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW) {
                 acc = Accuracy.LOW;
             } else {
                 acc = Accuracy.UNRELIABLE;

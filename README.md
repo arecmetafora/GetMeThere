@@ -63,11 +63,10 @@ mCompass = findViewById(R.id.compass);
 mMap = findViewById(R.id.map);
 Location location = ...; // Where the user is heading to
 
-CompassSensor sensor = new CompassSensor(this, getLifecycle())
-		.bindTo(mMap)
-		.bindTo(mCompass);
-		
-sensor.setLocationToTrack(location);
+mCompassSensor = CompassSensor.from(this, this)
+        .bindTo(mMap)
+        .bindTo(mCompass)
+        .track(mLocationToTrack);
 ```
 You do not need to worry about the Activity lifecycle and the compass sensor, since it is already aware of Activity lifecycle events, thanks to [Android architecture components](https://developer.android.com/topic/libraries/architecture/index.html).
 
@@ -92,10 +91,102 @@ OfflineMap offlineMap =  OfflineGoogleMaps.fromLocation(context, location);
 mMap.setOfflineMap(offlineMap);
 ```
 
-# Required Permissions
+# Required Permissions and Depedencies
 
 This library needs some permissions to work. Make sure your app requests this permissions to the user before using their components:
 
  - `android.permission.ACCESS_COARSE_LOCATION`
  - `android.permission.ACCESS_FINE_LOCATION`
 
+This library also uses _Google Play Services_ to get the user's location. Make sure you add this dependency in your gradle script:
+
+```groovy
+compile 'com.google.android.gms:play-services-location:11.8.0'
+```
+
+# Example
+
+The following example shows how to build a simple UI with the two view components, `Map` and `Compass`.
+
+```Java
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<OfflineMap> {
+
+    Map mMap;
+    Compass mCompass;
+    Location mLocation;
+
+    // Simple loader to get the map from the cloud and cache on disk
+    private static class MapLoader extends AsyncTaskLoader<OfflineMap> {
+        Location mLocation;
+
+        private MapLoader(Context context, Location location) {
+            super(context);
+            mLocation = location;
+        }
+
+        @Override
+        protected void onStartLoading() {
+            forceLoad();
+        }
+
+        @Nullable
+        @Override
+        public OfflineMap loadInBackground() {
+            try {
+                OfflineGoogleMaps.cache(getContext(), mLocation, "TESTE");
+                return OfflineGoogleMaps.fromLocation(getContext(), mLocation);
+            } catch (Exception ignored) {
+                // TODO: Deal with exceptions...
+            }
+            return null;
+        }
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        mCompass = findViewById(R.id.compass);
+        mMap = findViewById(R.id.map);
+        
+        // Mock Location. Get yours from intent args, for example
+        mLocation = new Location("");
+        mLocation.setLatitude(-23.595498);
+        mLocation.setLongitude(-46.686404);
+
+        CompassSensor.from(this, this)
+                .bindTo(mMap)
+                .bindTo(mCompass)
+                .track(mLocation);
+
+        getSupportLoaderManager().initLoader(0, null, this);
+
+        // Make sure you request permissions before using the API views
+        ActivityCompat.requestPermissions(this, new String[] {
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION}, 0);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        mCompassSensor.start();
+    }
+
+    @NonNull
+    @Override
+    public Loader<OfflineMap> onCreateLoader(int id, @Nullable Bundle args) {
+        return new MapLoader(this, mLocation);
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<OfflineMap> loader, OfflineMap data) {
+        mMap.setOfflineMap(data);
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<OfflineMap> loader) {
+    }
+}
+```

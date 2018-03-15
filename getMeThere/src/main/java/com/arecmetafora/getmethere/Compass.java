@@ -17,6 +17,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.animation.LinearInterpolator;
 
 import java.text.DecimalFormat;
 
@@ -86,12 +87,15 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
     private Paint mTextPaint;
     private Paint mImagePaint = new Paint(Paint.DITHER_FLAG);
     private Bitmap mPointerBitmap;
+    private Bitmap mLoadingBitmap;
     private RectF mPointerRect;
-    private Matrix mPointerMatrix;
+    private Matrix mRotationMatrix;
     private Bitmap mLocationBitmap;
     private RectF mLocationRect;
     private DecimalFormat mNumberFormatter = new DecimalFormat(".##");
     private ValueAnimator mCurrentAnimation;
+    private ValueAnimator mLoadingAnimation;
+    private float mLoadingAngle;
 
     /**
      * Constructor that is called when inflating a view from XML. This is called
@@ -149,6 +153,8 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
         }
         setPointer(mPointer);
 
+        mLoadingBitmap = ((BitmapDrawable) getResources().getDrawable(R.drawable.default_loading)).getBitmap();
+
         mPointerMargin = (int) (DEFAULT_POINTER_MARGIN * density);
         int padding = (int) (DEFAULT_PADDING * density);
         setPadding(padding, padding, padding, padding);
@@ -156,11 +162,23 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
         mArcRect = new RectF();
         mTextRect = new Rect();
         mPointerRect = new RectF();
-        mPointerMatrix = new Matrix();
+        mRotationMatrix = new Matrix();
         mLocationRect = new RectF();
 
         initArcPaint();
         initTextPaint();
+
+        mLoadingAnimation = ValueAnimator.ofFloat(0, 360);
+        mLoadingAnimation.setDuration(1000);
+        mLoadingAnimation.setRepeatCount(ValueAnimator.INFINITE);
+        mLoadingAnimation.setInterpolator(new LinearInterpolator());
+        mLoadingAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mLoadingAngle = (float) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+
     }
 
     /**
@@ -211,6 +229,23 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
     }
 
     @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if(mLocationBearing == Integer.MIN_VALUE) {
+            mLoadingAngle = 0;
+            mLoadingAnimation.start();
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if(mLoadingAnimation.isRunning()) {
+            mLoadingAnimation.cancel();
+        }
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
@@ -222,12 +257,12 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
             // Draw the compass pointer (arrow)
             float widthScale = mPointerRect.width() / mPointerBitmap.getWidth();
             float heightScale = mPointerRect.height() / mPointerBitmap.getHeight();
-            mPointerMatrix.reset();
-            mPointerMatrix.postScale(widthScale, heightScale);
-            mPointerMatrix.postTranslate(-mPointerRect.width() / 2, -mPointerRect.height() / 2);
-            mPointerMatrix.postRotate(-mLocationBearing);
-            mPointerMatrix.postTranslate(mPointerRect.centerX(), mPointerRect.centerY());
-            canvas.drawBitmap(mPointerBitmap, mPointerMatrix, mImagePaint);
+            mRotationMatrix.reset();
+            mRotationMatrix.postScale(widthScale, heightScale);
+            mRotationMatrix.postTranslate(-mPointerRect.width() / 2, -mPointerRect.height() / 2);
+            mRotationMatrix.postRotate(-mLocationBearing);
+            mRotationMatrix.postTranslate(mPointerRect.centerX(), mPointerRect.centerY());
+            canvas.drawBitmap(mPointerBitmap, mRotationMatrix, mImagePaint);
 
             // Draw the location marker along the compass arc boundaries
 
@@ -253,6 +288,17 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
             float xPos = canvas.getWidth() / 2 - mTextRect.width() / 2;
             float yPos = mArcRect.centerY() + 2 * (mArcRect.bottom - mArcRect.centerY()) / 3 - mTextPaint.descent() / 2;
             canvas.drawText(distanceStr, xPos, yPos, mTextPaint);
+
+        } else {
+            // Draw the loading instead of arrow
+            float widthScale = mPointerRect.width() / mLoadingBitmap.getWidth();
+            float heightScale = mPointerRect.height() / mLoadingBitmap.getHeight();
+            mRotationMatrix.reset();
+            mRotationMatrix.postScale(widthScale, heightScale);
+            mRotationMatrix.postTranslate(-mPointerRect.width() / 2, -mPointerRect.height() / 2);
+            mRotationMatrix.postRotate(mLoadingAngle);
+            mRotationMatrix.postTranslate(mPointerRect.centerX(), mPointerRect.centerY());
+            canvas.drawBitmap(mLoadingBitmap, mRotationMatrix, mImagePaint);
         }
     }
 
@@ -273,6 +319,7 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
         // First update
         if(mLocationBearing == Integer.MIN_VALUE) {
             mLocationBearing = bearingToLocation;
+            mLoadingAnimation.cancel();
             invalidate();
             return;
         }
