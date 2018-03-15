@@ -4,7 +4,7 @@
 GetMeThere consists in a set of views and tools to help you build offline applications to guide a user to get to a specific location on the globe.
 
 ```groovy
-compile 'com.arecmetafora:getMeThere:1.0.0'
+compile 'com.arecmetafora:getMeThere:1.0.1'
 ```
 
 # UI Components
