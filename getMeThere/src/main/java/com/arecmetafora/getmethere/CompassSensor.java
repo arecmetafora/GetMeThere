@@ -18,7 +18,6 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
@@ -32,29 +31,9 @@ import java.util.List;
 public final class CompassSensor implements SensorEventListener, LifecycleObserver {
 
     /**
-     * Accuracy from compass sensors.
-     */
-    public enum Accuracy {
-        UNRELIABLE,
-        LOW,
-        MEDIUM,
-        HIGH
-    }
-
-    /**
-     * Represents an entity which is observing the compass for sensors changes.
+     * Base class for compass listeners.
      */
     public interface CompassSensorListener {
-
-        /**
-         * Callback trigger when any sensor value has changed (user's location, direction angle, etc).
-         *
-         * @param myLocation The current user location.
-         * @param bearingToLocation The angle between user`s orientation and the tracked location.
-         * @param azimuth Azimuth to north pole.
-         * @param accuracy Sensor accuracies.
-         */
-        void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth, Accuracy accuracy);
 
         /**
          * Callback trigger when the listener when the compass is targeting another location to be tracked.
@@ -62,6 +41,46 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
          * @param location The new location to be tracked.
          */
         void onTrackingNewLocation(Location location);
+    }
+
+    /**
+     * Callback to receive location updates.
+     */
+    public interface LocationCallback extends CompassSensorListener {
+
+        /**
+         * Callback trigger when a new user`s location was detected.
+         *
+         * @param myLocation The current user location.
+         */
+        void onNewLocation(Location myLocation);
+    }
+
+    /**
+     * Callback to receive azimuth and bearing updates.
+     */
+    public interface BearingCallback extends LocationCallback {
+
+        /**
+         * Callback trigger when the bearing between user`s location and the tracked location was changed.
+         *
+         * @param bearingToLocation The angle between user`s orientation and the tracked location.
+         * @param azimuth Azimuth to north pole.
+         */
+        void onNewBearing(float bearingToLocation, float azimuth);
+    }
+
+    /**
+     * Callback to receive device rotation updates.
+     */
+    public interface RotationCallback extends LocationCallback {
+
+        /**
+         * Callback trigger when the user rotated his device.
+         *
+         * @param rotationMatrix The rotation matrix.
+         */
+        void onNewRotation(float[] rotationMatrix);
     }
 
     /**
@@ -88,31 +107,39 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     private Sensor mGravityFieldSensor;
     private Sensor mAccelerometerSensor;
     private Sensor mMagneticFieldSensor;
+    private Sensor mRotationVectorSensor;
     private boolean mHasGravitySensor;
     private boolean mHasAccelerometerSensor;
     private boolean mHasMagneticFieldSensor;
+    private boolean mHasRotationVectorSensor;
     private final float[] mRotationMatrix = new float[9];
+    private final float[] mRotationMatrixFromVector = new float[16];
     private final float[] mOrientationData = new float[3];
     private float[] mGravityData;
     private float[] mMagneticFieldData;
+    private float[] mRotationVectorData;
     private float mLastCalculatedBearingToLocation = 0;
-    private float mNorthAzimuth = Float.MIN_VALUE;
 
     private final Object mMonitor = new Object();
 
     // Listeners
-    private List<CompassSensorListener> mListeners;
+    private List<LocationCallback> mLocationListeners;
+    private List<BearingCallback> mBearingListeners;
+    private List<RotationCallback> mRotationListeners;
 
     // GPS sensor callback
-    private LocationCallback mLocationCallback = new LocationCallback() {
-        public void onLocationResult(LocationResult result) {
-            synchronized (mMonitor) {
-                mCurrentLocation = result.getLastLocation();
-                if(mNorthAzimuth != Float.MIN_VALUE) {
-                    notifySensorUpdate();
+    private com.google.android.gms.location.LocationCallback mLocationCallback =
+        new com.google.android.gms.location.LocationCallback() {
+            public void onLocationResult(LocationResult result) {
+                synchronized (mMonitor) {
+                    mCurrentLocation = result.getLastLocation();
+                    for(LocationCallback listener : mLocationListeners) {
+                        listener.onNewLocation(mCurrentLocation);
+                        onBearingSensorsChanged();
+                        onRotationSensorChanged();
+                    }
                 }
             }
-        }
     };
 
     /**
@@ -125,7 +152,10 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     private CompassSensor(@NonNull Context context, @NonNull LifecycleOwner lifecycleOwner, Location locationToTrack) {
         mContext = context;
         mLocationToTrack = locationToTrack;
-        mListeners = new LinkedList<>();
+
+        mLocationListeners = new LinkedList<>();
+        mBearingListeners = new LinkedList<>();
+        mRotationListeners = new LinkedList<>();
 
         lifecycleOwner.getLifecycle().addObserver(this);
 
@@ -138,9 +168,10 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
 
         mSensorManager = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
         assert mSensorManager != null;
-        mGravityFieldSensor = this.mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        mGravityFieldSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         mAccelerometerSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mMagneticFieldSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        mRotationVectorSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
     }
 
     /**
@@ -160,7 +191,15 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
      * @return The same compass sensor instance.
      */
     public CompassSensor bindTo(CompassSensorListener listener) {
-        mListeners.add(listener);
+        if(listener instanceof LocationCallback) {
+            mLocationListeners.add((LocationCallback) listener);
+        }
+        if(listener instanceof BearingCallback) {
+            mBearingListeners.add((BearingCallback) listener);
+        }
+        if(listener instanceof RotationCallback) {
+            mRotationListeners.add((RotationCallback) listener);
+        }
         if(this.mLocationToTrack != null) {
             listener.onTrackingNewLocation(this.mLocationToTrack);
         }
@@ -175,7 +214,13 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
      */
     public CompassSensor track(Location locationToTrack) {
         this.mLocationToTrack = locationToTrack;
-        for(CompassSensorListener listener : mListeners) {
+        for(CompassSensorListener listener : mLocationListeners) {
+            listener.onTrackingNewLocation(locationToTrack);
+        }
+        for(CompassSensorListener listener : mBearingListeners) {
+            listener.onTrackingNewLocation(locationToTrack);
+        }
+        for(CompassSensorListener listener : mRotationListeners) {
             listener.onTrackingNewLocation(locationToTrack);
         }
         return this;
@@ -195,16 +240,19 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
         }
 
         if(mLocationToTrack != null) {
-            mLocationProvider.requestLocationUpdates(locationRequest, mLocationCallback, null);
-            mHasGravitySensor = mSensorManager.registerListener(this, mGravityFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            mHasMagneticFieldSensor = mSensorManager.registerListener(this, mMagneticFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            if(!mHasGravitySensor) {
-                mHasAccelerometerSensor = mSensorManager.registerListener(this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            }
 
-            if(!mHasMagneticFieldSensor || !(mHasGravitySensor || mHasAccelerometerSensor)) {
-                // Not enough sensors to continue
-                stop();
+            if(mLocationListeners.size() > 0) {
+                mLocationProvider.requestLocationUpdates(locationRequest, mLocationCallback, null);
+            }
+            if(mBearingListeners.size() > 0) {
+                mHasGravitySensor = mSensorManager.registerListener(this, mGravityFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
+                mHasMagneticFieldSensor = mSensorManager.registerListener(this, mMagneticFieldSensor, SensorManager.SENSOR_DELAY_NORMAL);
+                if (!mHasGravitySensor) {
+                    mHasAccelerometerSensor = mSensorManager.registerListener(this, mAccelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
+                }
+            }
+            if(mRotationListeners.size() > 0) {
+                mHasRotationVectorSensor = mSensorManager.registerListener(this, mRotationVectorSensor, SensorManager.SENSOR_DELAY_FASTEST);
             }
         }
     }
@@ -212,7 +260,9 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     protected void destroy() {
         // Just to make sure nothing gets leaked
-        mListeners.clear();
+        mLocationListeners.clear();
+        mBearingListeners.clear();
+        mRotationListeners.clear();
         mContext = null;
     }
 
@@ -232,6 +282,9 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
         if(mHasMagneticFieldSensor) {
             mSensorManager.unregisterListener(this, mMagneticFieldSensor);
         }
+        if(mHasRotationVectorSensor) {
+            mSensorManager.unregisterListener(this, mRotationVectorSensor);
+        }
 
         mLastCalculatedBearingToLocation = 0;
         mCurrentLocation = null;
@@ -243,26 +296,37 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     public void onSensorChanged(SensorEvent event) {
 
         synchronized (mMonitor) {
+
+            // Ignore low quality data
+            if(mMagneticFieldSensorAccuracy < SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM) {
+                return;
+            }
+
             switch (event.sensor.getType()) {
                 case Sensor.TYPE_GRAVITY:
                     mGravityData = event.values;
+                    onBearingSensorsChanged();
                     break;
                 case Sensor.TYPE_ACCELEROMETER:
                     mGravityData = event.values;
+                    onBearingSensorsChanged();
                     break;
                 case Sensor.TYPE_MAGNETIC_FIELD:
                     mMagneticFieldData = event.values;
+                    onBearingSensorsChanged();
+                    break;
+                case Sensor.TYPE_ROTATION_VECTOR:
+                    mRotationVectorData = event.values;
+                    onRotationSensorChanged();
                     break;
             }
-
-            onSensorValueChanged();
         }
     }
 
     /**
-     * Whenever ANY sensor changes, this method must be called to calculate rotation
+     * Whenever any sensor related to bearing and azimuth orientation has changed.
      */
-    private void onSensorValueChanged() {
+    private void onBearingSensorsChanged() {
         if (mGravityData != null && mMagneticFieldData != null && mCurrentLocation != null) {
             SensorManager.getRotationMatrix(mRotationMatrix, null, mGravityData, mMagneticFieldData);
             SensorManager.getOrientation(mRotationMatrix, mOrientationData);
@@ -275,33 +339,26 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
             float azimuth = (float) Math.toDegrees(mOrientationData[0]) + geomagneticField.getDeclination();
             float bearing = mCurrentLocation.bearingTo(mLocationToTrack);
             float bearingToLocation = (azimuth - bearing + 360) % 360;
-            mNorthAzimuth = (azimuth + 360) % 360;
+            float northAzimuth = (azimuth + 360) % 360;
 
             if(Math.abs(mLastCalculatedBearingToLocation - bearingToLocation) > MINIMUM_ANGLE_CHANGE) {
                 mLastCalculatedBearingToLocation = bearingToLocation;
-                notifySensorUpdate();
+
+                for(BearingCallback listener : mBearingListeners) {
+                    listener.onNewBearing(mLastCalculatedBearingToLocation, northAzimuth);
+                }
             }
         }
     }
 
     /**
-     * Notify when a sensor has changed.
+     * Whenever ANY sensor changes, this method must be called to calculate rotation
      */
-    private void notifySensorUpdate() {
-        if (mListeners.size() > 0) {
-            Accuracy acc;
-            if(mMagneticFieldSensorAccuracy >= SensorManager.SENSOR_STATUS_ACCURACY_HIGH) {
-                acc = Accuracy.HIGH;
-            } else if(mMagneticFieldSensorAccuracy == SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM) {
-                acc = Accuracy.MEDIUM;
-            } else if(mMagneticFieldSensorAccuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW) {
-                acc = Accuracy.LOW;
-            } else {
-                acc = Accuracy.UNRELIABLE;
-            }
-
-            for(CompassSensorListener listener : mListeners) {
-                listener.onSensorUpdate(mCurrentLocation, mLastCalculatedBearingToLocation, mNorthAzimuth, acc);
+    private void onRotationSensorChanged() {
+        if(mRotationVectorData != null && mCurrentLocation != null) {
+            SensorManager.getRotationMatrixFromVector(mRotationMatrixFromVector, mRotationVectorData);
+            for (RotationCallback listener : mRotationListeners) {
+                listener.onNewRotation(mRotationMatrixFromVector);
             }
         }
     }

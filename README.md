@@ -4,17 +4,16 @@
 GetMeThere consists in a set of views and tools to help you build offline applications to guide a user to get to a specific location on the globe.
 
 ```groovy
-compile 'com.arecmetafora:getMeThere:1.0.1'
+compile 'com.arecmetafora:getMeThere:1.0.0'
 ```
 
 # UI Components
 
-GetMeThere provides two out-of-the-box UI components to work with offline navigation and georeference:  `Map` and `Compass`
-
-A `Map` is a tiny and lightweight offline map of a specific location's neighborhood. It helps users to find their way home by providing a simple guidance through a small offline map. It is very useful when the user needs to get an overview about his surroundings and can be used in a variety of situations, for instance, finding his hotel, points of interests in a tracking challenge, etc.
+GetMeThere provides three out-of-the-box UI components to work with offline navigation and georeference:  `Map`, `Compass` and `AugmentedRealityCompass`.
 
 <img src="https://github.com/arecmetafora/GetMeThere/raw/master/Video.gif" width="300" align="middle">
 
+A `Map` is a tiny and lightweight offline map of a specific location's neighborhood. It helps users to find their way home by providing a simple guidance through a small offline map. It is very useful when the user needs to get an overview about his surroundings and can be used in a variety of situations, for instance, finding his hotel, points of interests in a tracking challenge, etc.
 
 You can declare a `Map` via XML as shown in the example below:
 
@@ -24,14 +23,8 @@ You can declare a `Map` via XML as shown in the example below:
     android:id="@+id/map"
     android:layout_width="match_parent"
     android:layout_height="300dp"
-    lib:arcWidth="@dimen/map_arc_width"
-    lib:arcColor="@color/map_arc"
-    lib:textSize="@dimen/map_distance_text_size"
-    lib:textColor="@color/map_distance"
-    lib:pointer="@drawable/map_location_pointer"
     lib:locationIcon="@drawable/map_location_pin"/>
 ```
-_The custom styles (under `lib` namespace) are optional._
 
 After declaring your `Map` view, you still need to set an offline map which contains the map image that will be drawn. How to do that will be described later, in the **Offline Maps** section.
 
@@ -45,7 +38,30 @@ Its declaration in XML can be done in the following way:
     android:id="@+id/compass"
     android:layout_width="match_parent"
     android:layout_height="300dp"
+    lib:arcWidth="@dimen/compass_arc_width"
+    lib:arcColor="@color/compass_arc"
+    lib:textSize="@dimen/compass_distance_text_size"
+    lib:textColor="@color/compass_distance"
+    lib:pointer="@drawable/compass_pointer"
     lib:locationIcon="@drawable/compass_location"/>
+```
+
+<img src="https://github.com/arecmetafora/GetMeThere/raw/master/Video2.gif" width="300" align="middle">
+
+An `AugmentedRealityCompass` is similar to `Compass`, but uses the camera to project the location on the screen, simulating an augmented reality scenario.
+
+Its declaration in XML can be done in the following way:
+
+```XML
+<com.arecmetafora.getmethere.AugmentedRealityCompass
+    xmlns:lib="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/ar_compass"
+    android:layout_width="match_parent"
+    android:layout_height="300dp"
+    lib:textSize="@dimen/ar_compass_text_size"
+    lib:textColor="@color/ar_compass_distance"
+    lib:pointer="@drawable/ar_compass_pointer"
+    lib:locationIcon="@drawable/ar_compass_location"/>
 ```
 
 _The custom styles (under `lib` namespace) are optional._
@@ -59,13 +75,16 @@ You can bind a `CompassSensor` to any object which class implements the  `Compas
 The bind of a `CompassSensor` to a UI component can be done in the `onCreate` method of your Activity, as shown below:
 
 ```java
-mCompass = findViewById(R.id.compass);
 mMap = findViewById(R.id.map);
+mCompass = findViewById(R.id.compass);
+mAugmentedRealityCompass = findViewById(R.id.ar_compass);
+
 Location location = ...; // Where the user is heading to
 
 mCompassSensor = CompassSensor.from(this, this)
         .bindTo(mMap)
         .bindTo(mCompass)
+        .bindTo(mAugmentedRealityCompass)
         .track(mLocationToTrack);
 ```
 You do not need to worry about the Activity lifecycle and the compass sensor, since it is already aware of Activity lifecycle events, thanks to [Android architecture components](https://developer.android.com/topic/libraries/architecture/index.html).
@@ -97,6 +116,7 @@ This library needs some permissions to work. Make sure your app requests this pe
 
  - `android.permission.ACCESS_COARSE_LOCATION`
  - `android.permission.ACCESS_FINE_LOCATION`
+ - `android.permission.CAMERA`
 
 This library also uses _Google Play Services_ to get the user's location. Make sure you add this dependency in your gradle script:
 

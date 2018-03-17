@@ -5,6 +5,7 @@ import android.arch.lifecycle.LifecycleOwner;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
@@ -12,6 +13,8 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.Toast;
+
+import com.arecmetafora.getmethere.AugmentedRealityCompass;
 import com.arecmetafora.getmethere.Map;
 import com.arecmetafora.getmethere.Compass;
 import com.arecmetafora.getmethere.CompassSensor;
@@ -19,19 +22,28 @@ import com.arecmetafora.getmethere.GeoURI;
 import com.arecmetafora.getmethere.OfflineGoogleMaps;
 import com.arecmetafora.getmethere.OfflineMap;
 
-public class GetMeThereActivity extends AppCompatActivity {
+public class GetMeThereActivity extends AppCompatActivity implements CompassSensor.RotationCallback {
 
     private Map mMap;
     private Compass mCompass;
     private Location mLocationToTrack;
     private CompassSensor mCompassSensor;
 
+    private static final int ANGLE_CHANGE_LAYOUT = 60;
+    private static boolean sUsingAR = false;
+
+    private final float[] mOrientationData = new float[3];
     int easterEggNumberOfTaps = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_getmethere);
+
+        if(!sUsingAR) {
+            setContentView(R.layout.activity_getmethere);
+        } else {
+            setContentView(R.layout.activity_getmethere_ar);
+        }
 
         // Reading intent parameters
         if(getIntent() != null && Intent.ACTION_VIEW.equals(getIntent().getAction()) &&
@@ -62,28 +74,37 @@ public class GetMeThereActivity extends AppCompatActivity {
 
         mCompass = findViewById(R.id.compass);
         mMap = findViewById(R.id.map);
+        AugmentedRealityCompass mAugmetedRealityCompass = findViewById(R.id.augmented_reality_compass);
 
         mCompassSensor = CompassSensor.from(this, (LifecycleOwner) this)
-                .bindTo(mMap)
-                .bindTo(mCompass)
+                .bindTo(this)
                 .track(mLocationToTrack);
 
-        mMap.setOfflineMap(offlineMap);
+        if(mCompass != null) {
+            mCompassSensor.bindTo(mCompass);
+            mCompass.setOnClickListener((view) -> {
+                if(++easterEggNumberOfTaps == 10) {
+                    bookingEasterEgg();
+                }
+            });
+        }
+        if(mMap != null) {
+            mCompassSensor.bindTo(mMap);
+            mMap.setOfflineMap(offlineMap);
+        }
+        if(mAugmetedRealityCompass != null) {
+            mCompassSensor.bindTo(mAugmetedRealityCompass);
+        }
 
         // Check permissions
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                || ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(this,
-                    new String[] { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION },
+                    new String[] { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA },
                     0);
         }
-
-        mCompass.setOnClickListener((view) -> {
-            if(++easterEggNumberOfTaps == 10) {
-                bookingEasterEgg();
-            }
-        });
     }
 
     private void bookingEasterEgg() {
@@ -111,7 +132,32 @@ public class GetMeThereActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(resultCode == RESULT_OK) {
-            mMap.setOfflineMap(OfflineGoogleMaps.fromLocation(this, mLocationToTrack));
+            if(mMap != null) {
+                mMap.setOfflineMap(OfflineGoogleMaps.fromLocation(this, mLocationToTrack));
+            }
+        }
+    }
+
+    @Override
+    public void onTrackingNewLocation(Location location) {
+    }
+
+    @Override
+    public void onNewLocation(Location myLocation) {
+    }
+
+    @Override
+    public void onNewRotation(float[] rotationMatrix) {
+        SensorManager.getOrientation(rotationMatrix, mOrientationData);
+        double pitchAngle = Math.abs(Math.toDegrees(mOrientationData[1]));
+        if(!sUsingAR && pitchAngle > ANGLE_CHANGE_LAYOUT) {
+            sUsingAR = true;
+            mCompassSensor.stop();
+            recreate();
+        } else if(sUsingAR && pitchAngle < ANGLE_CHANGE_LAYOUT) {
+            sUsingAR = false;
+            mCompassSensor.stop();
+            recreate();
         }
     }
 }

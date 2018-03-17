@@ -24,7 +24,7 @@ import java.text.DecimalFormat;
 /**
  * Compass which points to a specific location.
  */
-public class Compass extends View implements CompassSensor.CompassSensorListener {
+public class Compass extends View implements CompassSensor.BearingCallback {
 
     // Defaults (units in DP)
     private static final int DEFAULT_ARC_COLOR = Color.argb(255, 31, 43, 76);
@@ -57,11 +57,6 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
      * Color of the distance text.
      */
     private int mTextColor;
-
-    /**
-     * Drawable representing the compass arrow (always point ahead)
-     */
-    private Drawable mPointer;
 
     /**
      * The location of the place where this widget is pointing at.
@@ -123,6 +118,7 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
         mTextColor = DEFAULT_TEXT_COLOR;
 
         Drawable myLocationIcon = null;
+        Drawable pointerIcon = null;
 
         if (attrs != null) {
             TypedArray atts = context.obtainStyledAttributes(attrs,
@@ -134,11 +130,7 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
             mTextColor = atts.getColor(R.styleable.Compass_textColor, mTextColor);
 
             myLocationIcon = atts.getDrawable(R.styleable.Compass_locationIcon);
-
-            Drawable pointer = atts.getDrawable(R.styleable.Compass_pointer);
-            if (pointer != null) {
-                mPointer = pointer;
-            }
+            pointerIcon = atts.getDrawable(R.styleable.Compass_pointer);
 
             atts.recycle();
         }
@@ -148,10 +140,10 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
         }
         setLocationIcon(myLocationIcon);
 
-        if(mPointer == null) {
-            mPointer = getResources().getDrawable(DEFAULT_POINTER);
+        if(pointerIcon == null) {
+            pointerIcon = getResources().getDrawable(DEFAULT_POINTER);
         }
-        setPointer(mPointer);
+        setPointer(pointerIcon);
 
         mLoadingBitmap = ((BitmapDrawable) getResources().getDrawable(R.drawable.default_loading)).getBitmap();
 
@@ -308,13 +300,12 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
     }
 
     @Override
-    public void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth, CompassSensor.Accuracy accuracy) {
+    public void onNewLocation(Location myLocation) {
         mDistanceToLocation = myLocation.distanceTo(mLocation);
+    }
 
-        // Discard bad accuracies
-        if(accuracy == CompassSensor.Accuracy.UNRELIABLE || accuracy == CompassSensor.Accuracy.LOW) {
-            return;
-        }
+    @Override
+    public void onNewBearing(float bearingToLocation, float azimuth) {
 
         // First update
         if(mLocationBearing == Integer.MIN_VALUE) {
@@ -421,8 +412,7 @@ public class Compass extends View implements CompassSensor.CompassSensorListener
      * @param pointer Drawable representing the compass arrow (always point ahead, statically).
      */
     public void setPointer(@NonNull Drawable pointer) {
-        mPointer = pointer;
-        mPointerBitmap = ((BitmapDrawable) mPointer).getBitmap();
+        mPointerBitmap = ((BitmapDrawable) pointer).getBitmap();
         invalidate();
     }
 

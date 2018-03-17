@@ -24,7 +24,7 @@ import com.otaliastudios.zoom.ZoomImageView;
 /**
  * Offline map of a location`s neighborhood.
  */
-public class Map extends ZoomImageView implements CompassSensor.CompassSensorListener {
+public class Map extends ZoomImageView implements CompassSensor.BearingCallback {
 
     /**
      * Drawable for this view
@@ -65,7 +65,7 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
     /**
      * Azimuth to north pole.
      */
-    private float mAzimuth;
+    private float mAzimuth = Integer.MIN_VALUE;
 
     /**
      * Current location accuracy.
@@ -160,14 +160,30 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
     }
 
     @Override
-    public void onSensorUpdate(Location myLocation, float bearingToLocation, float azimuth, CompassSensor.Accuracy accuracy) {
+    public void onNewLocation(Location myLocation) {
         mMyLocation = myLocation;
 
-        // Discard bad accuracies
-        if(accuracy == CompassSensor.Accuracy.UNRELIABLE || accuracy == CompassSensor.Accuracy.LOW) {
-            return;
-        }
+        float oldAccuracy = mCurrentAccuracy;
+        float newAccuracy = mMyLocation.getAccuracy();
 
+        // Cancels previous animation
+        if(mCurrentAccuracyAnimation != null) {
+            mCurrentAccuracyAnimation.cancel();
+        }
+        // Animate accuracy change
+        mCurrentAccuracyAnimation = ValueAnimator.ofFloat(oldAccuracy, newAccuracy);
+        mCurrentAccuracyAnimation.setDuration(DEFAULT_ANGLE_ANIMATION_TIME);
+        mCurrentAccuracyAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mCurrentAccuracy = (float) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+        mCurrentAccuracyAnimation.start();
+    }
+
+    @Override
+    public void onNewBearing(float bearingToLocation, float azimuth) {
         mAzimuth = azimuth;
 
         float newAzimuth = azimuth;
@@ -195,24 +211,6 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
             }
         });
         mCurrentSensorAnimation.start();
-
-        float oldAccuracy = mCurrentAccuracy;
-        float newAccuracy = mMyLocation.getAccuracy();
-
-        // Cancels previous animation
-        if(mCurrentAccuracyAnimation != null) {
-            mCurrentAccuracyAnimation.cancel();
-        }
-        // Animate accuracy change
-        mCurrentAccuracyAnimation = ValueAnimator.ofFloat(oldAccuracy, newAccuracy);
-        mCurrentAccuracyAnimation.setDuration(DEFAULT_ANGLE_ANIMATION_TIME);
-        mCurrentAccuracyAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            public void onAnimationUpdate(ValueAnimator animation) {
-                mCurrentAccuracy = (float) animation.getAnimatedValue();
-                invalidate();
-            }
-        });
-        mCurrentAccuracyAnimation.start();
     }
 
     /**
@@ -242,17 +240,19 @@ public class Map extends ZoomImageView implements CompassSensor.CompassSensorLis
             } else {
                 myLocationBitmap = mMyLocationOnlineBitmap;
 
-                // Draw the user`s view horizon
-                float size = mMyLocationIconSize*2 / zoomScale;
-                mMyLocationBearingRect.set(0, 0, size, size);
-                float widthScale = mMyLocationBearingRect.width() / mMyLocationBearingBitmap.getWidth();
-                float heightScale = mMyLocationBearingRect.height() / mMyLocationBearingBitmap.getHeight();
-                mLocationMatrix.reset();
-                mLocationMatrix.postScale(widthScale, heightScale);
-                mLocationMatrix.postTranslate(-mMyLocationBearingRect.width() / 2, -mMyLocationBearingRect.height() / 2);
-                mLocationMatrix.postRotate(mAzimuth);
-                mLocationMatrix.postTranslate(myLocationXY.x, myLocationXY.y);
-                canvas.drawBitmap(mMyLocationBearingBitmap, mLocationMatrix, mImagePaint);
+                // Draw the user`s pov
+                if(mAzimuth != Integer.MIN_VALUE) {
+                    float size = mMyLocationIconSize * 2 / zoomScale;
+                    mMyLocationBearingRect.set(0, 0, size, size);
+                    float widthScale = mMyLocationBearingRect.width() / mMyLocationBearingBitmap.getWidth();
+                    float heightScale = mMyLocationBearingRect.height() / mMyLocationBearingBitmap.getHeight();
+                    mLocationMatrix.reset();
+                    mLocationMatrix.postScale(widthScale, heightScale);
+                    mLocationMatrix.postTranslate(-mMyLocationBearingRect.width() / 2, -mMyLocationBearingRect.height() / 2);
+                    mLocationMatrix.postRotate(mAzimuth);
+                    mLocationMatrix.postTranslate(myLocationXY.x, myLocationXY.y);
+                    canvas.drawBitmap(mMyLocationBearingBitmap, mLocationMatrix, mImagePaint);
+                }
             }
 
             // Pointer (blue dot) of my current location

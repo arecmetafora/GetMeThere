@@ -3,6 +3,7 @@ apply plugin: 'com.android.library'
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
+
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
@@ -41,7 +42,7 @@ ext {
     siteUrl = 'https://github.com/arecmetafora/GetMeThere'
     gitUrl = 'https://github.com/arecmetafora/GetMeThere.git'
 
-    libraryVersion = '1.0.1'
+    libraryVersion = rootProject.ext.versionName
 
     developerId = 'arecmetafora'
     developerName = 'Alexander Haroldo da Rocha'

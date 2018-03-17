@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <attr name="locationIcon" format="reference" />
+    <attr name="pointer" format="reference" />
+    <attr name="textSize" format="dimension" />
+    <attr name="textColor" format="color" />
 
     <declare-styleable name="Compass">
         <attr name="arcWidth" format="dimension" />
         <attr name="arcColor" format="color" />
-        <attr name="textSize" format="dimension" />
-        <attr name="textColor" format="color" />
+        <attr name="textSize" />
+        <attr name="textColor" />
         <attr name="locationIcon" />
-        <attr name="pointer" format="reference" />
+        <attr name="pointer" />
     </declare-styleable>
     <declare-styleable name="Map">
         <attr name="locationIcon" />
+    </declare-styleable>
+    <declare-styleable name="AugmentedRealityCompass">
+        <attr name="textSize" />
+        <attr name="textColor" />
+        <attr name="locationIcon" />
+        <attr name="pointer" />
     </declare-styleable>
 </resources>
