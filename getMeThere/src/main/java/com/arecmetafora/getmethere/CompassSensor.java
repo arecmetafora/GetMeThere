@@ -128,6 +128,7 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
     private List<RotationCallback> mRotationListeners;
 
     // GPS sensor callback
+    // TODO: It seems this variable is leaking (removeLocationUpdates did not seem to remove the reference)
     private com.google.android.gms.location.LocationCallback mLocationCallback =
         new com.google.android.gms.location.LocationCallback() {
             public void onLocationResult(LocationResult result) {
@@ -264,6 +265,9 @@ public final class CompassSensor implements SensorEventListener, LifecycleObserv
         mBearingListeners.clear();
         mRotationListeners.clear();
         mContext = null;
+        mSensorManager = null;
+        mLocationProvider = null;
+        mLocationCallback = null;
     }
 
     /**
