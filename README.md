@@ -7,6 +7,8 @@ GetMeThere consists in a set of views and tools to help you build offline applic
 compile 'com.arecmetafora:getMeThere:1.0.0'
 ```
 
+https://play.google.com/store/apps/details?id=com.arecmetafora.getmethere
+
 # UI Components
 
 GetMeThere provides three out-of-the-box UI components to work with offline navigation and georeference:  `Map`, `Compass` and `AugmentedRealityCompass`.
